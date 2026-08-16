@@ -75,6 +75,18 @@ function CheckoutPage() {
   const submitOrder = useServerFn(createOrderRequest);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
+  const { data: account } = useQuery(accountSessionQuery());
+  const prefilled = useRef(false);
+  useEffect(() => {
+    if (prefilled.current || !account?.userId) return;
+    prefilled.current = true;
+    setForm((prev) => ({
+      ...prev,
+      fullName: prev.fullName || account.profile?.fullName || "",
+      phone: prev.phone || account.profile?.phone || "",
+      email: prev.email || account.email || "",
+    }));
+  }, [account]);
   const idempotencyKey = useRef<string>("");
   if (!idempotencyKey.current && typeof crypto !== "undefined") {
     idempotencyKey.current = crypto.randomUUID();
