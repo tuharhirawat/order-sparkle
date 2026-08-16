@@ -10,14 +10,18 @@ import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/site/theme-toggle";
 import { adminSessionQuery } from "@/lib/admin-session";
 import { claimFirstAdmin } from "@/lib/admin.functions";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Studio Admin — Mamta's Imitation Jewellery" },
-      { name: "description", content: "Private studio console for managing the Mamta's Imitation Jewellery catalogue and orders." },
-      { property: "og:title", content: "Studio Admin — Mamta's Imitation Jewellery" },
+      { title: `Studio Admin — ${dictionary.siteFullName}` },
+      {
+        name: "description",
+        content: `Private studio console for managing the ${dictionary.siteFullName} catalogue and orders.`,
+      },
+      { property: "og:title", content: `Studio Admin — ${dictionary.siteFullName}` },
       { property: "og:description", content: "Private studio console." },
       { name: "robots", content: "noindex, nofollow" },
     ],
@@ -25,7 +29,11 @@ export const Route = createFileRoute("/admin")({
   component: AdminLayout,
 });
 
-const NAV: { to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/categories" | "/admin/customers"; label: string; exact?: boolean }[] = [
+const NAV: {
+  to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/categories" | "/admin/customers";
+  label: string;
+  exact?: boolean;
+}[] = [
   { to: "/admin", label: "Dashboard", exact: true },
   { to: "/admin/orders", label: "Orders" },
   { to: "/admin/products", label: "Products" },
@@ -62,7 +70,7 @@ function AdminLayout() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="font-display text-xl tracking-wide">
-            Mamta's <span className="text-gold">Studio</span>
+            {dictionary.siteFirstName} <span className="text-gold">Studio</span>
           </Link>
           <nav className="hidden gap-1 md:flex">
             {NAV.map((item) => {
@@ -72,7 +80,9 @@ function AdminLayout() {
                   key={item.to}
                   to={item.to}
                   className={`rounded-sm px-3 py-2 text-xs uppercase tracking-[0.16em] transition-colors ${
-                    active ? "bg-secondary text-foreground" : "text-muted-foreground hover:text-foreground"
+                    active
+                      ? "bg-secondary text-foreground"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
                   {item.label}
@@ -83,7 +93,12 @@ function AdminLayout() {
           <div className="ml-auto flex items-center gap-2">
             <span className="hidden text-xs text-muted-foreground sm:block">{session.email}</span>
             <ThemeToggle />
-            <Button variant="ghost" size="icon" aria-label="Sign out" onClick={() => void signOut()}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Sign out"
+              onClick={() => void signOut()}
+            >
               <LogOut className="size-4" />
             </Button>
           </div>
@@ -204,7 +219,9 @@ function AdminAuthCard() {
           className="mt-6 text-xs uppercase tracking-[0.16em] text-muted-foreground transition-colors hover:text-foreground"
           onClick={() => setMode(mode === "signin" ? "signup" : "signin")}
         >
-          {mode === "signin" ? "First time? Create the studio account" : "Already have access? Sign in"}
+          {mode === "signin"
+            ? "First time? Create the studio account"
+            : "Already have access? Sign in"}
         </button>
         <Link
           to="/"

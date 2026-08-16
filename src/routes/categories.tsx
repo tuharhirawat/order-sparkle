@@ -4,17 +4,17 @@ import { ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
 import { Skeleton } from "@/components/ui/skeleton";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/categories")({
   head: () => ({
     meta: [
-      { title: "Collections — Mamta's Imitation Jewellery" },
+      { title: `Collections — ${dictionary.siteFullName}` },
       {
         name: "description",
-        content:
-          "Browse Mamta's Imitation Jewellery collections: rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.",
+        content: `Browse ${dictionary.siteFullName} collections: rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.`,
       },
-      { property: "og:title", content: "Collections — Mamta's Imitation Jewellery" },
+      { property: "og:title", content: `Collections — ${dictionary.siteFullName}` },
       {
         property: "og:description",
         content: "Rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.",

@@ -5,17 +5,18 @@ import { SiteLayout } from "@/components/site/layout";
 import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card";
 import { Button } from "@/components/ui/button";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Mamta's Imitation Jewellery — Handcrafted Gold & Diamond Jewellery" },
+      { title: `${dictionary.siteFullName} — Handcrafted Gold & Diamond Jewellery` },
       {
         name: "description",
         content:
           "Discover handcrafted 22k gold and diamond jewellery. Browse rings, necklaces, earrings and bracelets, then confirm your order personally on WhatsApp.",
       },
-      { property: "og:title", content: "Mamta's Imitation Jewellery — Handcrafted Gold & Diamond Jewellery" },
+      { property: "og:title", content: `${dictionary.siteFullName} — Handcrafted Gold & Diamond Jewellery` },
       {
         property: "og:description",
         content: "Handcrafted heirlooms in 22k gold and diamond, made to order and delivered across India.",
@@ -26,9 +27,21 @@ export const Route = createFileRoute("/")({
 });
 
 const promises = [
-  { icon: Gem, title: "Hallmarked craftsmanship", body: "Every piece is BIS hallmarked and finished by hand in our atelier." },
-  { icon: MessageCircle, title: "Personal confirmation", body: "We confirm availability, sizing and payment with you directly on WhatsApp." },
-  { icon: ShieldCheck, title: "Insured delivery", body: "Fully insured, signature-required shipping anywhere in India." },
+  {
+    icon: Gem,
+    title: "Hallmarked craftsmanship",
+    body: "Every piece is BIS hallmarked and finished by hand in our atelier.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Personal confirmation",
+    body: "We confirm availability, sizing and payment with you directly on WhatsApp.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Insured delivery",
+    body: "Fully insured, signature-required shipping anywhere in India.",
+  },
 ];
 
 function HomePage() {
@@ -59,7 +72,11 @@ function HomePage() {
               request, and we will personally confirm every detail before anything is paid.
             </p>
             <div className="mt-10 flex flex-wrap gap-3">
-              <Button asChild size="lg" className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]"
+              >
                 <Link to="/shop">Explore the collection</Link>
               </Button>
               <Button

@@ -5,17 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/lib/cart";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "Your Bag — Mamta's Imitation Jewellery" },
+      { title: `Your Bag — ${dictionary.siteFullName}` },
       {
         name: "description",
-        content: "Review the jewellery in your bag and send an order request to the Mamta's Imitation Jewellery studio.",
+        content: `Review the jewellery in your bag and send an order request to the ${dictionary.siteFullName} studio.`,
       },
-      { property: "og:title", content: "Your Bag — Mamta's Imitation Jewellery" },
-      { property: "og:description", content: "Review your selected jewellery and request your order." },
+      { property: "og:title", content: `Your Bag — ${dictionary.siteFullName}` },
+      {
+        property: "og:description",
+        content: "Review your selected jewellery and request your order.",
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -46,7 +50,10 @@ function CartPage() {
           <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_360px]">
             <ul className="divide-y divide-border border-y border-border">
               {items.map((item) => (
-                <li key={`${item.productId}-${item.variantId ?? "base"}`} className="flex gap-5 py-6">
+                <li
+                  key={`${item.productId}-${item.variantId ?? "base"}`}
+                  className="flex gap-5 py-6"
+                >
                   <Link
                     to="/product/$slug"
                     params={{ slug: item.slug }}
@@ -136,12 +143,16 @@ function CartPage() {
                 <span>Estimated total</span>
                 <span>{formatCurrency(subtotal)}</span>
               </div>
-              <Button asChild size="lg" className="mt-8 w-full rounded-sm text-xs uppercase tracking-[0.2em]">
+              <Button
+                asChild
+                size="lg"
+                className="mt-8 w-full rounded-sm text-xs uppercase tracking-[0.2em]"
+              >
                 <Link to="/checkout">Request order</Link>
               </Button>
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
-                No payment is taken online. We record your request, give you an order ID, and confirm
-                everything with you on WhatsApp.
+                No payment is taken online. We record your request, give you an order ID, and
+                confirm everything with you on WhatsApp.
               </p>
               <Link
                 to="/shop"

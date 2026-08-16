@@ -16,6 +16,7 @@ import {
   variantPrice,
   type ProductVariant,
 } from "@/lib/catalog";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/product/$slug")({
   loader: async ({ context, params }) => {
@@ -27,7 +28,7 @@ export const Route = createFileRoute("/product/$slug")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Piece unavailable — Mamta's Imitation Jewellery" },
+          { title: `Piece unavailable — ${dictionary.siteFullName}` },
           { name: "robots", content: "noindex" },
         ],
       };
@@ -35,12 +36,12 @@ export const Route = createFileRoute("/product/$slug")({
     const { product } = loaderData;
     const description =
       product.description?.slice(0, 155) ??
-      `${product.name} in ${product.material ?? "fine jewellery"}, handcrafted by Mamta's Imitation Jewellery.`;
+      `${product.name} in ${product.material ?? "fine jewellery"}, handcrafted by ${dictionary.siteFullName}.`;
     return {
       meta: [
-        { title: `${product.name} — Mamta's Imitation Jewellery` },
+        { title: `${product.name} — ${dictionary.siteFullName}` },
         { name: "description", content: description },
-        { property: "og:title", content: `${product.name} — Mamta's Imitation Jewellery` },
+        { property: "og:title", content: `${product.name} — ${dictionary.siteFullName}` },
         { property: "og:description", content: description },
         { property: "og:type", content: "product" },
       ],
@@ -102,7 +103,10 @@ function ProductPage() {
   return (
     <SiteLayout>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <nav aria-label="Breadcrumb" className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+        <nav
+          aria-label="Breadcrumb"
+          className="text-xs uppercase tracking-[0.16em] text-muted-foreground"
+        >
           <Link to="/shop" className="transition-colors hover:text-foreground">
             Shop
           </Link>

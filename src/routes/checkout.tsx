@@ -15,18 +15,18 @@ import { useCart } from "@/lib/cart";
 import { createOrderRequest, type OrderConfirmation } from "@/lib/orders.functions";
 import { saveLastOrder } from "@/lib/last-order";
 import { accountSessionQuery } from "@/lib/account";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Request Your Order — Mamta's Imitation Jewellery" },
+      { title: `Request Your Order — ${dictionary.siteFullName}` },
       {
         name: "description",
-        content:
-          "Share your delivery details to request your Mamta's Imitation Jewellery order. We record it instantly and confirm on WhatsApp.",
+        content: `Share your delivery details to request your ${dictionary.siteFullName} order. We record it instantly and confirm on WhatsApp.`,
       },
-      { property: "og:title", content: "Request Your Order — Mamta's Imitation Jewellery" },
-      { property: "og:description", content: "Request your Mamta's Imitation Jewellery order in a minute." },
+      { property: "og:title", content: `Request Your Order — ${dictionary.siteFullName}` },
+      { property: "og:description", content: `Request your ${dictionary.siteFullName} order in a minute.` },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -125,7 +125,10 @@ function CheckoutPage() {
       // Database first: the order exists before we hand off to WhatsApp.
       saveLastOrder(confirmation);
       clear();
-      void navigate({ to: "/order/$orderNumber", params: { orderNumber: confirmation.orderNumber } });
+      void navigate({
+        to: "/order/$orderNumber",
+        params: { orderNumber: confirmation.orderNumber },
+      });
     },
     onError: (error: Error) => {
       toast.error("We couldn't place your request", { description: error.message });
@@ -170,8 +173,8 @@ function CheckoutPage() {
         <p className="eyebrow">Step 2 of 2</p>
         <h1 className="mt-2 font-display text-5xl">Request your order</h1>
         <p className="mt-3 max-w-xl text-sm text-muted-foreground">
-          Nothing is charged now. We save your request, give you an order ID, and confirm the details
-          with you personally on WhatsApp.
+          Nothing is charged now. We save your request, give you an order ID, and confirm the
+          details with you personally on WhatsApp.
         </p>
 
         <div className="mt-12 grid gap-12 lg:grid-cols-[1fr_360px]">

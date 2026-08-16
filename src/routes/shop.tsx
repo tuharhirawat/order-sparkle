@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { categoriesQuery, productsQuery, type SortKey } from "@/lib/catalog";
+import dictionary from "@/Constants/dictionary";
 
 interface ShopSearch {
   q?: string | undefined;
@@ -35,7 +36,7 @@ const SORTS: { value: SortKey; label: string }[] = [
 
 export const Route = createFileRoute("/shop")({
   validateSearch: (search: Record<string, unknown>): ShopSearch => {
-    const sort = search['sort'];
+    const sort = search["sort"];
     const num = (v: unknown) => {
       const n = Number(v);
       return Number.isFinite(n) && n >= 0 ? n : undefined;
@@ -53,13 +54,13 @@ export const Route = createFileRoute("/shop")({
   },
   head: () => ({
     meta: [
-      { title: "Shop All Jewellery — Mamta's Imitation Jewellery" },
+      { title: `Shop All Jewellery — ${dictionary.siteFullName}` },
       {
         name: "description",
         content:
           "Shop hallmarked gold and diamond rings, necklaces, earrings and bracelets. Filter by collection, price and availability.",
       },
-      { property: "og:title", content: "Shop All Jewellery — Mamta's Imitation Jewellery" },
+      { property: "og:title", content: `Shop All Jewellery — ${dictionary.siteFullName}` },
       {
         property: "og:description",
         content: "Filter hallmarked gold and diamond jewellery by collection, price and availability.",
@@ -74,7 +75,12 @@ function ShopPage() {
   const navigate = useNavigate({ from: "/shop" });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { data: categories } = useQuery(categoriesQuery());
-  const { data: products, isPending, isError, refetch } = useQuery(
+  const {
+    data: products,
+    isPending,
+    isError,
+    refetch,
+  } = useQuery(
     productsQuery({
       search: search.q,
       categorySlug: search.category,
@@ -166,7 +172,9 @@ function ShopPage() {
           </div>
         </div>
 
-        <div className={`${filtersOpen ? "grid" : "hidden"} mt-6 gap-4 rounded-sm border border-border p-4 lg:!grid lg:grid-cols-4 lg:items-end`}>
+        <div
+          className={`${filtersOpen ? "grid" : "hidden"} mt-6 gap-4 rounded-sm border border-border p-4 lg:!grid lg:grid-cols-4 lg:items-end`}
+        >
           <div className="lg:hidden">
             <Label className="text-xs uppercase tracking-[0.14em]">Collection</Label>
             <Select
@@ -229,9 +237,7 @@ function ShopPage() {
               variant="ghost"
               size="sm"
               className="justify-self-start rounded-sm"
-              onClick={() =>
-                navigate({ search: {} })
-              }
+              onClick={() => navigate({ search: {} })}
             >
               <X className="mr-1 size-3.5" />
               Clear filters
@@ -268,7 +274,11 @@ function ShopPage() {
                 Try a different collection, widen your price range, or clear the filters.
               </p>
               <div className="mt-6 flex justify-center gap-3">
-                <Button variant="outline" className="rounded-sm" onClick={() => navigate({ search: {} })}>
+                <Button
+                  variant="outline"
+                  className="rounded-sm"
+                  onClick={() => navigate({ search: {} })}
+                >
                   Clear filters
                 </Button>
                 <Button asChild className="rounded-sm">

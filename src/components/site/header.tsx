@@ -18,6 +18,7 @@ import { useCart } from "@/lib/cart";
 import { categoriesQuery, storeSettingsQuery } from "@/lib/catalog";
 import { accountSessionQuery } from "@/lib/account";
 import { supabase } from "@/integrations/supabase/client";
+import dictionary from "@/Constants/dictionary";
 
 const navLinks = [
   { to: "/shop", label: "Shop" },
@@ -62,9 +63,7 @@ export function SiteHeader() {
           </SheetTrigger>
           <SheetContent side="left" className="w-[85vw] max-w-sm">
             <SheetHeader>
-              <SheetTitle className="font-display text-2xl font-normal">
-                Mamta's Imitation Jewellery
-              </SheetTitle>
+              <SheetTitle className="font-display text-2xl font-normal">{dictionary.siteFullName}</SheetTitle>
             </SheetHeader>
             <nav className="mt-2 flex flex-col gap-1 px-4 pb-6">
               {navLinks.map((link) => (
@@ -144,10 +143,10 @@ export function SiteHeader() {
 
         <Link to="/" className="flex shrink-0 flex-col leading-none">
           <span className="font-display text-2xl tracking-[0.16em] text-foreground lg:text-[1.75rem]">
-            Mamta's
+            {dictionary.siteFirstName}
           </span>
           <span className="hidden text-[0.6rem] uppercase tracking-[0.34em] text-muted-foreground sm:block">
-            Imitation Jewellery
+            {dictionary.siteLastName}
           </span>
         </Link>
 

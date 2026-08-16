@@ -15,6 +15,7 @@ import { ThemeProvider, themeInitScript } from "@/lib/theme";
 import { CartProvider } from "@/lib/cart";
 import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
+import dictionary from "@/Constants/dictionary";
 
 function NotFoundComponent() {
   return (
@@ -79,12 +80,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Mamta's Imitation Jewellery" },
+      { title: dictionary.siteFullName },
       {
         name: "description",
         content: "Handcrafted gold and diamond jewellery, made to order and delivered across India.",
       },
-      { property: "og:site_name", content: "Mamta's Imitation Jewellery" },
+      { property: "og:site_name", content: dictionary.siteFullName },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#faf8f4" },

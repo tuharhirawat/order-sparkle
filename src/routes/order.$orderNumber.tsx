@@ -10,16 +10,17 @@ import { storeSettingsQuery } from "@/lib/catalog";
 import { readLastOrder } from "@/lib/last-order";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import type { OrderConfirmation } from "@/lib/orders.functions";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/order/$orderNumber")({
   head: ({ params }) => ({
     meta: [
-      { title: `Order ${params.orderNumber} — Mamta's Imitation Jewellery` },
+      { title: `Order ${params.orderNumber} — ${dictionary.siteFullName}` },
       {
         name: "description",
-        content: "Your Mamta's Imitation Jewellery order request has been recorded. Continue on WhatsApp to confirm it.",
+        content: `Your ${dictionary.siteFullName} order request has been recorded. Continue on WhatsApp to confirm it.`,
       },
-      { property: "og:title", content: "Order confirmed — Mamta's Imitation Jewellery" },
+      { property: "og:title", content: `Order confirmed — ${dictionary.siteFullName}` },
       { property: "og:description", content: "Your order request has been recorded." },
       { name: "robots", content: "noindex" },
     ],
@@ -36,7 +37,7 @@ function OrderConfirmationPage() {
     setOrder(readLastOrder(orderNumber));
   }, [orderNumber]);
 
-  const storeName = "Mamta's Imitation Jewellery";
+  const storeName = dictionary.siteFullName;
   const whatsappNumber = settings?.whatsapp_number ?? "";
 
   const whatsappHref = order
@@ -65,8 +66,8 @@ function OrderConfirmationPage() {
           <p className="eyebrow mt-6">Order recorded</p>
           <h1 className="mt-3 font-display text-4xl sm:text-5xl">Thank you</h1>
           <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Your request is saved in our studio records. Please continue on WhatsApp so we can confirm
-            sizing, availability and payment.
+            Your request is saved in our studio records. Please continue on WhatsApp so we can
+            confirm sizing, availability and payment.
           </p>
           <p className="mt-8 text-xs uppercase tracking-[0.18em] text-muted-foreground">Order ID</p>
           <p className="mt-1 font-display text-3xl text-gold">{orderNumber}</p>

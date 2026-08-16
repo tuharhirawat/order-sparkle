@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
+import dictionary from "@/Constants/dictionary";
 
 const signupSchema = z
   .object({
@@ -36,10 +37,16 @@ export const Route = createFileRoute("/signup")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Create an account — Mamta's Imitation Jewellery" },
-      { name: "description", content: "Create an Mamta's Imitation Jewellery account to track your jewellery order requests." },
-      { property: "og:title", content: "Create an account — Mamta's Imitation Jewellery" },
-      { property: "og:description", content: "Track your jewellery order requests with an Mamta's Imitation Jewellery account." },
+      { title: `Create an account — ${dictionary.siteFullName}` },
+      {
+        name: "description",
+        content: `Create a ${dictionary.siteFullName} account to track your jewellery order requests.`,
+      },
+      { property: "og:title", content: `Create an account — ${dictionary.siteFullName}` },
+      {
+        property: "og:description",
+        content: `Track your jewellery order requests with a ${dictionary.siteFullName} account.`,
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -104,8 +111,8 @@ function SignupPage() {
           <MailCheck className="mx-auto size-8 text-gold" />
           <h1 className="mt-6 font-display text-3xl text-foreground">Confirm your email</h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            We've sent a confirmation link to <span className="text-foreground">{email}</span>. Click it to
-            activate your account, then sign in.
+            We've sent a confirmation link to <span className="text-foreground">{email}</span>.
+            Click it to activate your account, then sign in.
           </p>
           <Button className="mt-8" onClick={() => void navigate({ to: "/login" })}>
             Go to sign in
@@ -128,7 +135,12 @@ function SignupPage() {
         <form onSubmit={onSubmit} className="mt-10 space-y-5">
           <div className="space-y-2">
             <Label htmlFor="name">Full name</Label>
-            <Input id="name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="name"
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -194,8 +206,12 @@ function SignupPage() {
               onCheckedChange={(v) => setAcceptTerms(v === true)}
               className="mt-0.5"
             />
-            <Label htmlFor="terms" className="text-sm font-normal leading-relaxed text-muted-foreground">
-              I accept the terms &amp; conditions and understand that orders are confirmed over WhatsApp.
+            <Label
+              htmlFor="terms"
+              className="text-sm font-normal leading-relaxed text-muted-foreground"
+            >
+              I accept the terms &amp; conditions and understand that orders are confirmed over
+              WhatsApp.
             </Label>
           </div>
 

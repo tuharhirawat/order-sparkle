@@ -6,14 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
 import { accountSessionQuery, myOrderRequestsQuery } from "@/lib/account";
+import dictionary from "@/Constants/dictionary";
 
 export const Route = createFileRoute("/_authenticated/my-orders")({
   head: () => ({
     meta: [
-      { title: "My order requests — Mamta's Imitation Jewellery" },
-      { name: "description", content: "Track the status of every jewellery order request you've placed." },
-      { property: "og:title", content: "My order requests — Mamta's Imitation Jewellery" },
-      { property: "og:description", content: "Track the status of your Mamta's Imitation Jewellery order requests." },
+      { title: `My order requests — ${dictionary.siteFullName}` },
+      {
+        name: "description",
+        content: "Track the status of every jewellery order request you've placed.",
+      },
+      { property: "og:title", content: `My order requests — ${dictionary.siteFullName}` },
+      {
+        property: "og:description",
+        content: `Track the status of your ${dictionary.siteFullName} order requests.`,
+      },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -41,9 +48,7 @@ function MyOrdersPage() {
         <p className="eyebrow">Your account</p>
         <h1 className="mt-3 font-display text-4xl font-normal text-foreground">My order requests</h1>
         <p className="mt-3 text-sm text-muted-foreground">
-          {session?.profile?.fullName
-            ? `${session.profile.fullName} — `
-            : ""}
+          {session?.profile?.fullName ? `${session.profile.fullName} — ` : ""}
           Requests placed with {session?.email ?? "your account"}
           {session?.profile?.phone ? ` or ${session.profile.phone}` : ""}.
         </p>
@@ -126,7 +131,8 @@ function MyOrdersPage() {
 
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
-                  Delivering to {order.shipLine1}, {order.shipCity}, {order.shipState} {order.shipPincode}
+                  Delivering to {order.shipLine1}, {order.shipCity}, {order.shipState}{" "}
+                  {order.shipPincode}
                 </p>
                 <p className="font-display text-lg text-foreground">{formatCurrency(order.total)}</p>
               </div>
