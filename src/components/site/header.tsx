@@ -1,13 +1,23 @@
 import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { Menu, Search, ShoppingBag } from "lucide-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Menu, Search, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetHeader } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { useCart } from "@/lib/cart";
 import { categoriesQuery, storeSettingsQuery } from "@/lib/catalog";
+import { accountSessionQuery } from "@/lib/account";
+import { supabase } from "@/integrations/supabase/client";
 
 const navLinks = [
   { to: "/shop", label: "Shop" },
@@ -18,10 +28,21 @@ const navLinks = [
 export function SiteHeader() {
   const { count, hydrated } = useCart();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [term, setTerm] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const { data: settings } = useQuery(storeSettingsQuery());
   const { data: categories } = useQuery(categoriesQuery());
+  const { data: account } = useQuery(accountSessionQuery());
+  const signedIn = Boolean(account?.userId);
+
+  async function signOut() {
+    await queryClient.cancelQueries();
+    queryClient.clear();
+    await supabase.auth.signOut();
+    setMenuOpen(false);
+    void navigate({ to: "/login", replace: true });
+  }
 
   function submitSearch(event: React.FormEvent) {
     event.preventDefault();
@@ -80,6 +101,43 @@ export function SiteHeader() {
                   <Search className="size-4" />
                 </Button>
               </form>
+              <div className="mt-6 flex flex-col gap-1 px-2">
+                {signedIn ? (
+                  <>
+                    <Link
+                      to="/my-orders"
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded-sm py-2 text-sm uppercase tracking-[0.18em] text-foreground"
+                    >
+                      My order requests
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => void signOut()}
+                      className="rounded-sm py-2 text-left text-sm uppercase tracking-[0.18em] text-muted-foreground"
+                    >
+                      Sign out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded-sm py-2 text-sm uppercase tracking-[0.18em] text-foreground"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setMenuOpen(false)}
+                      className="rounded-sm py-2 text-sm uppercase tracking-[0.18em] text-muted-foreground"
+                    >
+                      Create account
+                    </Link>
+                  </>
+                )}
+              </div>
             </nav>
           </SheetContent>
         </Sheet>
@@ -124,6 +182,36 @@ export function SiteHeader() {
 
         <div className="ml-auto flex items-center gap-1 lg:ml-2">
           <ThemeToggle />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label={signedIn ? "Account menu" : "Sign in"}>
+                <User className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {signedIn ? (
+                <>
+                  <DropdownMenuLabel className="truncate text-xs font-normal text-muted-foreground">
+                    {account?.profile?.fullName || account?.email}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/my-orders">My order requests</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => void signOut()}>Sign out</DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem asChild>
+                    <Link to="/login">Sign in</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/signup">Create account</Link>
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Button asChild variant="ghost" size="icon" className="relative">
             <Link to="/cart" aria-label={`Shopping bag, ${hydrated ? count : 0} items`}>
               <ShoppingBag className="size-4" />
