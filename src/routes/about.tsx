@@ -5,16 +5,16 @@ import { Button } from "@/components/ui/button";
 export const Route = createFileRoute("/about")({
   head: () => ({
     meta: [
-      { title: "Our Story — Aurelia Fine Jewellery" },
+      { title: "Our Story — Mamta's Imitation Jewellery" },
       {
         name: "description",
         content:
-          "Four decades of hand-finished gold and diamond jewellery from Jaipur. Learn how Aurelia designs, crafts and personally delivers every piece.",
+          "Four decades of hand-finished gold and diamond jewellery from Visakhapatnam. Learn how Maamta's designs, crafts and personally delivers every piece.",
       },
-      { property: "og:title", content: "Our Story — Aurelia Fine Jewellery" },
+      { property: "og:title", content: "Our Story — Mamta's Imitation Jewellery" },
       {
         property: "og:description",
-        content: "Four decades of hand-finished gold and diamond jewellery from Jaipur.",
+        content: "Four decades of hand-finished gold and diamond jewellery from Visakhapatnam.",
       },
     ],
   }),
@@ -30,7 +30,7 @@ function AboutPage() {
         <div className="mt-8 gold-rule" />
         <div className="mt-8 space-y-6 text-base leading-relaxed text-muted-foreground">
           <p>
-            Aurelia began in 1984 with a single bench in Jaipur and a simple belief: jewellery should
+            Mamta's began in 1984 with a single bench in Visakhapatnam and a simple belief: jewellery should
             be made slowly, by people whose names you can learn. Four decades later we still finish
             every setting by hand, and we still make each piece to order.
           </p>

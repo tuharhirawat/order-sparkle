@@ -36,10 +36,10 @@ export const Route = createFileRoute("/signup")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Create an account — Aurelia Fine Jewellery" },
-      { name: "description", content: "Create an Aurelia account to track your jewellery order requests." },
-      { property: "og:title", content: "Create an account — Aurelia Fine Jewellery" },
-      { property: "og:description", content: "Track your jewellery order requests with an Aurelia account." },
+      { title: "Create an account — Mamta's Imitation Jewellery" },
+      { name: "description", content: "Create an Mamta's Imitation Jewellery account to track your jewellery order requests." },
+      { property: "og:title", content: "Create an account — Mamta's Imitation Jewellery" },
+      { property: "og:description", content: "Track your jewellery order requests with an Mamta's Imitation Jewellery account." },
       { name: "robots", content: "noindex" },
     ],
   }),

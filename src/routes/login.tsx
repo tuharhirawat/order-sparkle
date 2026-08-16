@@ -20,10 +20,10 @@ export const Route = createFileRoute("/login")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Sign in — Aurelia Fine Jewellery" },
-      { name: "description", content: "Sign in to track your Aurelia order requests and saved details." },
-      { property: "og:title", content: "Sign in — Aurelia Fine Jewellery" },
-      { property: "og:description", content: "Track your Aurelia order requests." },
+      { title: "Sign in — Mamta's Imitation Jewellery" },
+      { name: "description", content: "Sign in to track your Mamta's Imitation Jewellery order requests and saved details." },
+      { property: "og:title", content: "Sign in — Mamta's Imitation Jewellery" },
+      { property: "og:description", content: "Track your Mamta's Imitation Jewellery order requests." },
       { name: "robots", content: "noindex" },
     ],
   }),
@@ -120,7 +120,7 @@ function LoginPage() {
         </form>
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
-          New to Aurelia?{" "}
+          New to Mamta's Imitation Jewellery?{" "}
           <Link to="/signup" className="text-foreground underline underline-offset-4">
             Create an account
           </Link>

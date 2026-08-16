@@ -79,12 +79,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Aurelia Fine Jewellery" },
+      { title: "Mamta's Imitation Jewellery" },
       {
         name: "description",
         content: "Handcrafted gold and diamond jewellery, made to order and delivered across India.",
       },
-      { property: "og:site_name", content: "Aurelia Fine Jewellery" },
+      { property: "og:site_name", content: "Mamta's Imitation Jewellery" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#faf8f4" },

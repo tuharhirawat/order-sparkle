@@ -27,7 +27,7 @@ export const Route = createFileRoute("/product/$slug")({
     if (!loaderData) {
       return {
         meta: [
-          { title: "Piece unavailable — Aurelia Fine Jewellery" },
+          { title: "Piece unavailable — Mamta's Imitation Jewellery" },
           { name: "robots", content: "noindex" },
         ],
       };
@@ -35,12 +35,12 @@ export const Route = createFileRoute("/product/$slug")({
     const { product } = loaderData;
     const description =
       product.description?.slice(0, 155) ??
-      `${product.name} in ${product.material ?? "fine jewellery"}, handcrafted by Aurelia.`;
+      `${product.name} in ${product.material ?? "fine jewellery"}, handcrafted by Mamta's Imitation Jewellery.`;
     return {
       meta: [
-        { title: `${product.name} — Aurelia Fine Jewellery` },
+        { title: `${product.name} — Mamta's Imitation Jewellery` },
         { name: "description", content: description },
-        { property: "og:title", content: `${product.name} — Aurelia Fine Jewellery` },
+        { property: "og:title", content: `${product.name} — Mamta's Imitation Jewellery` },
         { property: "og:description", content: description },
         { property: "og:type", content: "product" },
       ],

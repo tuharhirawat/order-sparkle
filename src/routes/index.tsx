@@ -9,13 +9,13 @@ import { categoriesQuery, productsQuery } from "@/lib/catalog";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Aurelia Fine Jewellery — Handcrafted Gold & Diamond Jewellery" },
+      { title: "Mamta's Imitation Jewellery — Handcrafted Gold & Diamond Jewellery" },
       {
         name: "description",
         content:
           "Discover handcrafted 22k gold and diamond jewellery. Browse rings, necklaces, earrings and bracelets, then confirm your order personally on WhatsApp.",
       },
-      { property: "og:title", content: "Aurelia Fine Jewellery — Handcrafted Gold & Diamond Jewellery" },
+      { property: "og:title", content: "Mamta's Imitation Jewellery — Handcrafted Gold & Diamond Jewellery" },
       {
         property: "og:description",
         content: "Handcrafted heirlooms in 22k gold and diamond, made to order and delivered across India.",
@@ -49,7 +49,7 @@ function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/10 dark:from-background dark:via-background/90 dark:to-background/30" />
         <div className="relative mx-auto flex min-h-[74vh] max-w-7xl items-center px-4 py-20 sm:px-6 lg:px-8">
           <div className="max-w-xl animate-rise">
-            <p className="eyebrow">Est. 1984 · Jaipur</p>
+            <p className="eyebrow">Est. 1984 · Visakhapatnam</p>
             <h1 className="mt-5 font-display text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
               Jewellery made to be
               <span className="italic text-gold"> inherited</span>

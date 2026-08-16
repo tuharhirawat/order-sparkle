@@ -11,7 +11,7 @@ export function SiteFooter() {
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-4 lg:px-8">
         <div className="md:col-span-2">
           <p className="font-display text-2xl tracking-[0.16em]">
-            {settings?.store_name ?? "Aurelia Fine Jewellery"}
+            Mamta's Imitation Jewellery
           </p>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
             {settings?.tagline ?? "Handcrafted heirlooms in 22k gold and diamond."}
@@ -70,7 +70,7 @@ export function SiteFooter() {
       <div className="border-t border-border">
         <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
           <p>
-            © {new Date().getFullYear()} {settings?.store_name ?? "Aurelia Fine Jewellery"}. All rights reserved.
+            © {new Date().getFullYear()} Mamta's Imitation Jewellery. All rights reserved.
           </p>
           <Link to="/admin" className="transition-colors hover:text-foreground">
             Store admin

@@ -15,9 +15,9 @@ export const Route = createFileRoute("/admin")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Studio Admin — Aurelia Fine Jewellery" },
-      { name: "description", content: "Private studio console for managing the Aurelia catalogue and orders." },
-      { property: "og:title", content: "Studio Admin — Aurelia Fine Jewellery" },
+      { title: "Studio Admin — Mamta's Imitation Jewellery" },
+      { name: "description", content: "Private studio console for managing the Mamta's Imitation Jewellery catalogue and orders." },
+      { property: "og:title", content: "Studio Admin — Mamta's Imitation Jewellery" },
       { property: "og:description", content: "Private studio console." },
       { name: "robots", content: "noindex, nofollow" },
     ],
@@ -62,7 +62,7 @@ function AdminLayout() {
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center gap-6 px-4 py-4 sm:px-6 lg:px-8">
           <Link to="/" className="font-display text-xl tracking-wide">
-            Aurelia <span className="text-gold">Studio</span>
+            Mamta's <span className="text-gold">Studio</span>
           </Link>
           <nav className="hidden gap-1 md:flex">
             {NAV.map((item) => {

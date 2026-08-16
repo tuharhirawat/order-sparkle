@@ -14,12 +14,12 @@ import type { OrderConfirmation } from "@/lib/orders.functions";
 export const Route = createFileRoute("/order/$orderNumber")({
   head: ({ params }) => ({
     meta: [
-      { title: `Order ${params.orderNumber} — Aurelia Fine Jewellery` },
+      { title: `Order ${params.orderNumber} — Mamta's Imitation Jewellery` },
       {
         name: "description",
-        content: "Your Aurelia order request has been recorded. Continue on WhatsApp to confirm it.",
+        content: "Your Mamta's Imitation Jewellery order request has been recorded. Continue on WhatsApp to confirm it.",
       },
-      { property: "og:title", content: "Order confirmed — Aurelia Fine Jewellery" },
+      { property: "og:title", content: "Order confirmed — Mamta's Imitation Jewellery" },
       { property: "og:description", content: "Your order request has been recorded." },
       { name: "robots", content: "noindex" },
     ],
@@ -36,7 +36,7 @@ function OrderConfirmationPage() {
     setOrder(readLastOrder(orderNumber));
   }, [orderNumber]);
 
-  const storeName = settings?.store_name ?? "Aurelia Fine Jewellery";
+  const storeName = "Mamta's Imitation Jewellery";
   const whatsappNumber = settings?.whatsapp_number ?? "";
 
   const whatsappHref = order

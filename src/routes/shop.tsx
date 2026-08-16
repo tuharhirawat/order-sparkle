@@ -53,13 +53,13 @@ export const Route = createFileRoute("/shop")({
   },
   head: () => ({
     meta: [
-      { title: "Shop All Jewellery — Aurelia Fine Jewellery" },
+      { title: "Shop All Jewellery — Mamta's Imitation Jewellery" },
       {
         name: "description",
         content:
           "Shop hallmarked gold and diamond rings, necklaces, earrings and bracelets. Filter by collection, price and availability.",
       },
-      { property: "og:title", content: "Shop All Jewellery — Aurelia Fine Jewellery" },
+      { property: "og:title", content: "Shop All Jewellery — Mamta's Imitation Jewellery" },
       {
         property: "og:description",
         content: "Filter hallmarked gold and diamond jewellery by collection, price and availability.",

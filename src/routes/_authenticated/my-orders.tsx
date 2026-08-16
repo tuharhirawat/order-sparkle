@@ -10,10 +10,10 @@ import { accountSessionQuery, myOrderRequestsQuery } from "@/lib/account";
 export const Route = createFileRoute("/_authenticated/my-orders")({
   head: () => ({
     meta: [
-      { title: "My order requests — Aurelia Fine Jewellery" },
+      { title: "My order requests — Mamta's Imitation Jewellery" },
       { name: "description", content: "Track the status of every jewellery order request you've placed." },
-      { property: "og:title", content: "My order requests — Aurelia Fine Jewellery" },
-      { property: "og:description", content: "Track the status of your Aurelia order requests." },
+      { property: "og:title", content: "My order requests — Mamta's Imitation Jewellery" },
+      { property: "og:description", content: "Track the status of your Mamta's Imitation Jewellery order requests." },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -9,12 +9,12 @@ import { useCart } from "@/lib/cart";
 export const Route = createFileRoute("/cart")({
   head: () => ({
     meta: [
-      { title: "Your Bag — Aurelia Fine Jewellery" },
+      { title: "Your Bag — Mamta's Imitation Jewellery" },
       {
         name: "description",
-        content: "Review the jewellery in your bag and send an order request to the Aurelia studio.",
+        content: "Review the jewellery in your bag and send an order request to the Mamta's Imitation Jewellery studio.",
       },
-      { property: "og:title", content: "Your Bag — Aurelia Fine Jewellery" },
+      { property: "og:title", content: "Your Bag — Mamta's Imitation Jewellery" },
       { property: "og:description", content: "Review your selected jewellery and request your order." },
       { name: "robots", content: "noindex" },
     ],

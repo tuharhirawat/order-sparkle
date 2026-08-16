@@ -19,14 +19,14 @@ import { accountSessionQuery } from "@/lib/account";
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
-      { title: "Request Your Order — Aurelia Fine Jewellery" },
+      { title: "Request Your Order — Mamta's Imitation Jewellery" },
       {
         name: "description",
         content:
-          "Share your delivery details to request your Aurelia jewellery order. We record it instantly and confirm on WhatsApp.",
+          "Share your delivery details to request your Mamta's Imitation Jewellery order. We record it instantly and confirm on WhatsApp.",
       },
-      { property: "og:title", content: "Request Your Order — Aurelia Fine Jewellery" },
-      { property: "og:description", content: "Request your Aurelia jewellery order in a minute." },
+      { property: "og:title", content: "Request Your Order — Mamta's Imitation Jewellery" },
+      { property: "og:description", content: "Request your Mamta's Imitation Jewellery order in a minute." },
       { name: "robots", content: "noindex" },
     ],
   }),

@@ -8,13 +8,13 @@ import { categoriesQuery, productsQuery } from "@/lib/catalog";
 export const Route = createFileRoute("/categories")({
   head: () => ({
     meta: [
-      { title: "Collections — Aurelia Fine Jewellery" },
+      { title: "Collections — Mamta's Imitation Jewellery" },
       {
         name: "description",
         content:
-          "Browse Aurelia's jewellery collections: rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.",
+          "Browse Mamta's Imitation Jewellery collections: rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.",
       },
-      { property: "og:title", content: "Collections — Aurelia Fine Jewellery" },
+      { property: "og:title", content: "Collections — Mamta's Imitation Jewellery" },
       {
         property: "og:description",
         content: "Rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.",
