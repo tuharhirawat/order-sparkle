@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/layout";
@@ -14,6 +14,7 @@ import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { createOrderRequest, type OrderConfirmation } from "@/lib/orders.functions";
 import { saveLastOrder } from "@/lib/last-order";
+import { accountSessionQuery } from "@/lib/account";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
