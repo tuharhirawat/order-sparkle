@@ -135,6 +135,7 @@ function AdminProducts() {
             <thead className="bg-secondary/60 text-xs uppercase tracking-[0.14em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">Product</th>
+                <th className="px-4 py-3 text-left">Photos</th>
                 <th className="px-4 py-3 text-left">Collection</th>
                 <th className="px-4 py-3 text-right">Price</th>
                 <th className="px-4 py-3 text-right">Stock</th>
@@ -148,6 +149,14 @@ function AdminProducts() {
                   <td className="px-4 py-3">
                     {product.name}
                     <span className="block text-xs text-muted-foreground">{product.sku}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <ProductPhotos
+                      productId={product.id}
+                      productName={product.name}
+                      images={product.product_images ?? []}
+                      onChanged={refresh}
+                    />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {product.categories?.name ?? "—"}
@@ -188,7 +197,7 @@ function AdminProducts() {
               ))}
               {!isPending && (products ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     No products yet.
                   </td>
                 </tr>
@@ -238,6 +247,25 @@ function AdminProducts() {
             <div>
               <Label htmlFor="p-image" className="text-xs uppercase tracking-[0.16em]">Image URL</Label>
               <Input id="p-image" value={draft.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} placeholder="/images/piece.jpg" className="mt-2 h-10 rounded-sm" />
+            </div>
+            <div>
+              <Label htmlFor="p-files" className="text-xs uppercase tracking-[0.16em]">
+                Upload photos
+              </Label>
+              <Input
+                id="p-files"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="mt-2 h-10 rounded-sm"
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              />
+              {files.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {files.length} photo{files.length > 1 ? "s" : ""} ready to upload
+                </p>
+              )}
             </div>
             <div>
               <Label htmlFor="p-desc" className="text-xs uppercase tracking-[0.16em]">Description</Label>
