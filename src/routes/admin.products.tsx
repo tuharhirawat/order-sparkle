@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, slugify } from "@/lib/format";
 import { adminCategoriesQuery, adminProductsQuery } from "@/lib/admin-data";
+import { deleteProductImage, uploadProductImages } from "@/lib/product-images";
 
 export const Route = createFileRoute("/admin/products")({
   component: AdminProducts,
@@ -48,6 +49,8 @@ function AdminProducts() {
   const { data: categories } = useQuery(adminCategoriesQuery());
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
   const set = (key: keyof Draft, value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
@@ -80,9 +83,19 @@ function AdminProducts() {
           position: 0,
         });
       }
+      if (files.length && data) {
+        await uploadProductImages(
+          data.id,
+          files,
+          draft.name.trim(),
+          draft.imageUrl.trim() ? 1 : 0,
+        );
+      }
     },
     onSuccess: () => {
       setDraft(EMPTY);
+      setFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast.success("Product added");
       void refresh();
     },
