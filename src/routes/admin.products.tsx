@@ -285,3 +285,95 @@ function AdminProducts() {
   );
 }
 
+
+interface ProductImage {
+  id: string;
+  url: string;
+  alt: string | null;
+  position: number;
+}
+
+function ProductPhotos({
+  productId,
+  productName,
+  images,
+  onChanged,
+}: {
+  productId: string;
+  productName: string;
+  images: ProductImage[];
+  onChanged: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const sorted = [...images].sort((a, b) => a.position - b.position);
+
+  const upload = useMutation({
+    mutationFn: async (selected: File[]) =>
+      uploadProductImages(productId, selected, productName, sorted.length),
+    onSuccess: () => {
+      toast.success("Photos uploaded");
+      if (inputRef.current) inputRef.current.value = "";
+      onChanged();
+    },
+    onError: (e: Error) => toast.error("Upload failed", { description: e.message }),
+  });
+
+  const remove = useMutation({
+    mutationFn: deleteProductImage,
+    onSuccess: () => {
+      toast.success("Photo removed");
+      onChanged();
+    },
+    onError: (e: Error) => toast.error("Could not remove photo", { description: e.message }),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      {sorted.map((image) => (
+        <div key={image.id} className="group relative">
+          <img
+            src={image.url}
+            alt={image.alt ?? productName}
+            loading="lazy"
+            className="size-10 rounded-sm object-cover"
+          />
+          <button
+            type="button"
+            aria-label={`Remove photo from ${productName}`}
+            onClick={() => remove.mutate(image.id)}
+            className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground group-hover:flex"
+          >
+            <X className="size-2.5" />
+          </button>
+        </div>
+      ))}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        aria-label={`Upload photos for ${productName}`}
+        onChange={(e) => {
+          const selected = Array.from(e.target.files ?? []);
+          if (selected.length) upload.mutate(selected);
+        }}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-10 rounded-sm"
+        disabled={upload.isPending}
+        aria-label={`Add photos to ${productName}`}
+        onClick={() => inputRef.current?.click()}
+      >
+        {upload.isPending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Upload className="size-4" />
+        )}
+      </Button>
+    </div>
+  );
+}
