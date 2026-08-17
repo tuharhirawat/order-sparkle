@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency, formatDate, titleCase } from "@/lib/format";
 import { accountSessionQuery, myOrderRequestsQuery } from "@/lib/account";
+import { OrderTimeline } from "@/components/site/order-timeline";
 
 export const Route = createFileRoute("/_authenticated/my-orders")({
   head: () => ({
@@ -95,6 +96,14 @@ function MyOrdersPage() {
                   </span>
                 </div>
               </div>
+
+              <Separator className="my-5" />
+
+              <OrderTimeline
+                status={order.status}
+                events={order.events ?? []}
+                createdAt={order.createdAt}
+              />
 
               <Separator className="my-5" />
 

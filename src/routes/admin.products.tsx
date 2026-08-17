@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Loader2, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, slugify } from "@/lib/format";
 import { adminCategoriesQuery, adminProductsQuery } from "@/lib/admin-data";
+import { deleteProductImage, uploadProductImages } from "@/lib/product-images";
 
 export const Route = createFileRoute("/admin/products")({
   component: AdminProducts,
@@ -48,6 +49,8 @@ function AdminProducts() {
   const { data: categories } = useQuery(adminCategoriesQuery());
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  const [files, setFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
   const set = (key: keyof Draft, value: string) => setDraft((prev) => ({ ...prev, [key]: value }));
@@ -80,9 +83,19 @@ function AdminProducts() {
           position: 0,
         });
       }
+      if (files.length && data) {
+        await uploadProductImages(
+          data.id,
+          files,
+          draft.name.trim(),
+          draft.imageUrl.trim() ? 1 : 0,
+        );
+      }
     },
     onSuccess: () => {
       setDraft(EMPTY);
+      setFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       toast.success("Product added");
       void refresh();
     },
@@ -122,6 +135,7 @@ function AdminProducts() {
             <thead className="bg-secondary/60 text-xs uppercase tracking-[0.14em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">Product</th>
+                <th className="px-4 py-3 text-left">Photos</th>
                 <th className="px-4 py-3 text-left">Collection</th>
                 <th className="px-4 py-3 text-right">Price</th>
                 <th className="px-4 py-3 text-right">Stock</th>
@@ -135,6 +149,14 @@ function AdminProducts() {
                   <td className="px-4 py-3">
                     {product.name}
                     <span className="block text-xs text-muted-foreground">{product.sku}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <ProductPhotos
+                      productId={product.id}
+                      productName={product.name}
+                      images={product.product_images ?? []}
+                      onChanged={refresh}
+                    />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {product.categories?.name ?? "—"}
@@ -175,7 +197,7 @@ function AdminProducts() {
               ))}
               {!isPending && (products ?? []).length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     No products yet.
                   </td>
                 </tr>
@@ -227,6 +249,25 @@ function AdminProducts() {
               <Input id="p-image" value={draft.imageUrl} onChange={(e) => set("imageUrl", e.target.value)} placeholder="/images/piece.jpg" className="mt-2 h-10 rounded-sm" />
             </div>
             <div>
+              <Label htmlFor="p-files" className="text-xs uppercase tracking-[0.16em]">
+                Upload photos
+              </Label>
+              <Input
+                id="p-files"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="mt-2 h-10 rounded-sm"
+                onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
+              />
+              {files.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {files.length} photo{files.length > 1 ? "s" : ""} ready to upload
+                </p>
+              )}
+            </div>
+            <div>
               <Label htmlFor="p-desc" className="text-xs uppercase tracking-[0.16em]">Description</Label>
               <Textarea id="p-desc" rows={3} value={draft.description} onChange={(e) => set("description", e.target.value)} className="mt-2 rounded-sm" />
             </div>
@@ -244,3 +285,95 @@ function AdminProducts() {
   );
 }
 
+
+interface ProductImage {
+  id: string;
+  url: string;
+  alt: string | null;
+  position: number;
+}
+
+function ProductPhotos({
+  productId,
+  productName,
+  images,
+  onChanged,
+}: {
+  productId: string;
+  productName: string;
+  images: ProductImage[];
+  onChanged: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const sorted = [...images].sort((a, b) => a.position - b.position);
+
+  const upload = useMutation({
+    mutationFn: async (selected: File[]) =>
+      uploadProductImages(productId, selected, productName, sorted.length),
+    onSuccess: () => {
+      toast.success("Photos uploaded");
+      if (inputRef.current) inputRef.current.value = "";
+      onChanged();
+    },
+    onError: (e: Error) => toast.error("Upload failed", { description: e.message }),
+  });
+
+  const remove = useMutation({
+    mutationFn: deleteProductImage,
+    onSuccess: () => {
+      toast.success("Photo removed");
+      onChanged();
+    },
+    onError: (e: Error) => toast.error("Could not remove photo", { description: e.message }),
+  });
+
+  return (
+    <div className="flex items-center gap-2">
+      {sorted.map((image) => (
+        <div key={image.id} className="group relative">
+          <img
+            src={image.url}
+            alt={image.alt ?? productName}
+            loading="lazy"
+            className="size-10 rounded-sm object-cover"
+          />
+          <button
+            type="button"
+            aria-label={`Remove photo from ${productName}`}
+            onClick={() => remove.mutate(image.id)}
+            className="absolute -right-1 -top-1 hidden size-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground group-hover:flex"
+          >
+            <X className="size-2.5" />
+          </button>
+        </div>
+      ))}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        aria-label={`Upload photos for ${productName}`}
+        onChange={(e) => {
+          const selected = Array.from(e.target.files ?? []);
+          if (selected.length) upload.mutate(selected);
+        }}
+      />
+      <Button
+        type="button"
+        variant="outline"
+        size="icon"
+        className="size-10 rounded-sm"
+        disabled={upload.isPending}
+        aria-label={`Add photos to ${productName}`}
+        onClick={() => inputRef.current?.click()}
+      >
+        {upload.isPending ? (
+          <Loader2 className="size-4 animate-spin" />
+        ) : (
+          <Upload className="size-4" />
+        )}
+      </Button>
+    </div>
+  );
+}

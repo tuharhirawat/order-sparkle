@@ -6,6 +6,7 @@ export interface MyOrderRequest {
   createdAt: string;
   status: string;
   paymentStatus: string;
+  events: { status: string; paymentStatus: string | null; createdAt: string; note: string | null }[];
   total: number;
   shipCity: string;
   shipState: string;
@@ -47,7 +48,7 @@ export const getMyOrderRequests = createServerFn({ method: "GET" })
     const { data, error } = await supabaseAdmin
       .from("orders")
       .select(
-        "order_number, created_at, status, payment_status, total, ship_line1, ship_city, ship_state, ship_pincode, customer_note, order_items(product_name, variant_label, quantity, unit_price, line_total, image_url)",
+        "order_number, created_at, status, payment_status, total, ship_line1, ship_city, ship_state, ship_pincode, customer_note, order_items(product_name, variant_label, quantity, unit_price, line_total, image_url), order_status_events(status, payment_status, note, created_at)",
       )
       .or(filters.join(","))
       .order("created_at", { ascending: false })
@@ -60,6 +61,14 @@ export const getMyOrderRequests = createServerFn({ method: "GET" })
       createdAt: row.created_at,
       status: row.status,
       paymentStatus: row.payment_status,
+      events: [...(row.order_status_events ?? [])]
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+        .map((e) => ({
+          status: e.status,
+          paymentStatus: e.payment_status,
+          note: e.note,
+          createdAt: e.created_at,
+        })),
       total: Number(row.total),
       shipLine1: row.ship_line1,
       shipCity: row.ship_city,
