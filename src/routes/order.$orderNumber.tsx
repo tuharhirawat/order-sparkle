@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { CheckCircle2, MessageCircle } from "lucide-react";
@@ -6,31 +6,13 @@ import { SiteLayout } from "@/components/site/layout";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format";
-import { storeSettingsQuery } from "@/lib/catalog";
 import { readLastOrder } from "@/lib/last-order";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import type { OrderConfirmation } from "@/lib/orders.functions";
 import dictionary from "@/Constants/dictionary";
 
-export const Route = createFileRoute("/order/$orderNumber")({
-  head: ({ params }) => ({
-    meta: [
-      { title: `Order ${params.orderNumber} — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Your ${dictionary.siteFullName} order request has been recorded. Continue on WhatsApp to confirm it.`,
-      },
-      { property: "og:title", content: `Order confirmed — ${dictionary.siteFullName}` },
-      { property: "og:description", content: "Your order request has been recorded." },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: OrderConfirmationPage,
-});
-
-function OrderConfirmationPage() {
-  const { orderNumber } = Route.useParams();
-  const { data: settings } = useQuery(storeSettingsQuery());
+export default function OrderConfirmationPage() {
+  const { orderNumber = "" } = useParams();
   const [order, setOrder] = useState<OrderConfirmation | null>(null);
 
   useEffect(() => {
@@ -38,7 +20,7 @@ function OrderConfirmationPage() {
   }, [orderNumber]);
 
   const storeName = dictionary.siteFullName;
-  const whatsappNumber = settings?.whatsapp_number ?? "";
+  const whatsappNumber = dictionary.whatsappNumber ?? "Please configure a WhatsApp number";
 
   const whatsappHref = order
     ? buildWhatsAppUrl({

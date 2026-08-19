@@ -109,17 +109,6 @@ export const productQuery = (slug: string) =>
     staleTime: 30_000,
   });
 
-export const storeSettingsQuery = () =>
-  queryOptions({
-    queryKey: ["store-settings"],
-    queryFn: async (): Promise<StoreSettings | null> => {
-      const { data, error } = await supabase.from("store_settings").select("*").maybeSingle();
-      if (error) throw new Error(error.message);
-      return data;
-    },
-    staleTime: 300_000,
-  });
-
 export function primaryImage(product: Pick<Product, "product_images" | "name">): {
   url: string | null;
   alt: string;

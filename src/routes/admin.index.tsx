@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { IndianRupee, Package, ShoppingCart, Users } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,11 +10,7 @@ import {
   statusTone,
 } from "@/lib/admin-data";
 
-export const Route = createFileRoute("/admin/")({
-  component: AdminDashboard,
-});
-
-function AdminDashboard() {
+export default function AdminDashboard() {
   const { data: orders, isPending } = useQuery(adminOrdersQuery());
   const { data: products } = useQuery(adminProductsQuery());
   const { data: customers } = useQuery(adminCustomersQuery());

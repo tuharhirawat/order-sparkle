@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -25,11 +24,7 @@ import {
   type PaymentStatus,
 } from "@/lib/admin-data";
 
-export const Route = createFileRoute("/admin/orders")({
-  component: AdminOrders,
-});
-
-function AdminOrders() {
+export default function AdminOrders() {
   const { data: orders, isPending } = useQuery(adminOrdersQuery());
   const queryClient = useQueryClient();
   const [query, setQuery] = useState("");

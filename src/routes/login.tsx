@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQueryClient } from "@tanstack/react-query";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -8,39 +7,29 @@ import { SiteLayout } from "@/components/site/layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
-import { ensureProfile } from "@/lib/account";
+import api from "@/Services/api";
 import dictionary from "@/Constants/dictionary";
+import { useAuth } from "@/hooks/use-auth";
+import { isSafeRedirect } from "@/lib/redirect";
 
 const loginSchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Please enter a valid email").max(255),
   password: z.string().min(1, "Password is required").max(72),
 });
 
-export const Route = createFileRoute("/login")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: `Sign in — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Sign in to track your ${dictionary.siteFullName} order requests and saved details.`,
-      },
-      { property: "og:title", content: `Sign in — ${dictionary.siteFullName}` },
-      { property: "og:description", content: `Track your ${dictionary.siteFullName} order requests.` },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: LoginPage,
-});
-
-function LoginPage() {
+export default function LoginPage() {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const { refreshUser } = useAuth();
+  const redirectTo = searchParams.get("redirectTo") ?? undefined;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const safeRedirectTo = isSafeRedirect(redirectTo)
+    ? redirectTo
+    : undefined;
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -52,22 +41,19 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      await api.post("/Auth/Login", {
         email: parsed.data.email,
         password: parsed.data.password,
       });
-      if (error) {
-        toast.error(
-          error.message.toLowerCase().includes("confirm")
-            ? "Please confirm your email first — check your inbox."
-            : "Incorrect email or password.",
-        );
-        return;
-      }
-      await ensureProfile();
-      await queryClient.invalidateQueries();
-      toast.success("Welcome back");
-      void navigate({ to: "/my-orders", replace: true });
+
+      await refreshUser();
+      toast.success("Logged in successfully!");
+
+      navigate(safeRedirectTo ?? "/shop", { replace: true });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ?? "Incorrect email or password.",
+      );
     } finally {
       setLoading(false);
     }
@@ -125,7 +111,10 @@ function LoginPage() {
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           New to {dictionary.siteFullName}?{" "}
-          <Link to="/signup" className="text-foreground underline underline-offset-4">
+          <Link
+            to={safeRedirectTo ? `/signup?redirectTo=${encodeURIComponent(safeRedirectTo)}` : "/signup"}
+            className="text-foreground underline underline-offset-4"
+          >
             Create an account
           </Link>
         </p>

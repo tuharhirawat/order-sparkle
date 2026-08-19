@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Gem, MessageCircle, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
@@ -6,25 +6,6 @@ import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card
 import { Button } from "@/components/ui/button";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
 import dictionary from "@/Constants/dictionary";
-
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: `${dictionary.siteFullName} — Handcrafted Gold & Diamond Jewellery` },
-      {
-        name: "description",
-        content:
-          "Discover handcrafted 22k gold and diamond jewellery. Browse rings, necklaces, earrings and bracelets, then confirm your order personally on WhatsApp.",
-      },
-      { property: "og:title", content: `${dictionary.siteFullName} — Handcrafted Gold & Diamond Jewellery` },
-      {
-        property: "og:description",
-        content: "Handcrafted heirlooms in 22k gold and diamond, made to order and delivered across India.",
-      },
-    ],
-  }),
-  component: HomePage,
-});
 
 const promises = [
   {
@@ -44,7 +25,7 @@ const promises = [
   },
 ];
 
-function HomePage() {
+export default function HomePage() {
   const { data: featured, isPending } = useQuery(productsQuery({ featuredOnly: true, limit: 8 }));
   const { data: categories } = useQuery(categoriesQuery());
 
@@ -144,8 +125,7 @@ function HomePage() {
           {(categories ?? []).map((category) => (
             <Link
               key={category.id}
-              to="/shop"
-              search={{ category: category.slug }}
+              to={`/shop?category=${encodeURIComponent(category.slug)}`}
               className="surface-panel group flex flex-col justify-between rounded-sm p-8 transition-shadow hover:shadow-lifted"
             >
               <div>

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
@@ -16,7 +16,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { categoriesQuery, productsQuery, type SortKey } from "@/lib/catalog";
-import dictionary from "@/Constants/dictionary";
 
 interface ShopSearch {
   q?: string | undefined;
@@ -34,45 +33,21 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: "name", label: "Alphabetical" },
 ];
 
-export const Route = createFileRoute("/shop")({
-  validateSearch: (search: Record<string, unknown>): ShopSearch => {
-    const sort = search["sort"];
-    const num = (v: unknown) => {
-      const n = Number(v);
-      return Number.isFinite(n) && n >= 0 ? n : undefined;
-    };
-    return {
-      ...(typeof search['q'] === "string" && search['q'] ? { q: search['q'].slice(0, 80) } : {}),
-      ...(typeof search['category'] === "string" && search['category']
-        ? { category: search['category'] }
-        : {}),
-      ...(SORTS.some((s) => s.value === sort) ? { sort: sort as SortKey } : {}),
-      ...(num(search['min']) !== undefined ? { min: num(search['min']) } : {}),
-      ...(num(search['max']) !== undefined ? { max: num(search['max']) } : {}),
-      ...(search['inStock'] === true || search['inStock'] === "true" ? { inStock: true } : {}),
-    };
-  },
-  head: () => ({
-    meta: [
-      { title: `Shop All Jewellery — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content:
-          "Shop hallmarked gold and diamond rings, necklaces, earrings and bracelets. Filter by collection, price and availability.",
-      },
-      { property: "og:title", content: `Shop All Jewellery — ${dictionary.siteFullName}` },
-      {
-        property: "og:description",
-        content: "Filter hallmarked gold and diamond jewellery by collection, price and availability.",
-      },
-    ],
-  }),
-  component: ShopPage,
-});
-
-function ShopPage() {
-  const search = Route.useSearch();
-  const navigate = useNavigate({ from: "/shop" });
+export default function ShopPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const num = (value: string | null) => {
+    const parsed = Number(value);
+    return value !== null && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  };
+  const sort = searchParams.get("sort");
+  const search: ShopSearch = {
+    ...(searchParams.get("q") ? { q: searchParams.get("q")!.slice(0, 80) } : {}),
+    ...(searchParams.get("category") ? { category: searchParams.get("category")! } : {}),
+    ...(SORTS.some((option) => option.value === sort) ? { sort: sort as SortKey } : {}),
+    ...(num(searchParams.get("min")) !== undefined ? { min: num(searchParams.get("min")) } : {}),
+    ...(num(searchParams.get("max")) !== undefined ? { max: num(searchParams.get("max")) } : {}),
+    ...(searchParams.get("inStock") === "true" ? { inStock: true } : {}),
+  };
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { data: categories } = useQuery(categoriesQuery());
   const {
@@ -92,15 +67,13 @@ function ShopPage() {
   );
 
   const update = (patch: Partial<ShopSearch>) =>
-    navigate({
-      search: (prev) => {
-        const next = { ...prev, ...patch } as Record<string, unknown>;
+    setSearchParams((previous) => {
+        const next = { ...Object.fromEntries(previous), ...patch } as Record<string, unknown>;
         Object.keys(next).forEach((key) => {
           const value = next[key];
           if (value === undefined || value === "" || value === false) delete next[key];
         });
-        return next as ShopSearch;
-      },
+        return next as Record<string, string>;
     });
 
   const activeCategory = categories?.find((c) => c.slug === search.category);
@@ -237,7 +210,7 @@ function ShopPage() {
               variant="ghost"
               size="sm"
               className="justify-self-start rounded-sm"
-              onClick={() => navigate({ search: {} })}
+              onClick={() => setSearchParams({})}
             >
               <X className="mr-1 size-3.5" />
               Clear filters
@@ -277,7 +250,7 @@ function ShopPage() {
                 <Button
                   variant="outline"
                   className="rounded-sm"
-                  onClick={() => navigate({ search: {} })}
+                  onClick={() => setSearchParams({})}
                 >
                   Clear filters
                 </Button>

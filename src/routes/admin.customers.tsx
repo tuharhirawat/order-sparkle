@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
@@ -6,11 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { adminCustomersQuery, adminOrdersQuery } from "@/lib/admin-data";
 
-export const Route = createFileRoute("/admin/customers")({
-  component: AdminCustomers,
-});
-
-function AdminCustomers() {
+export default function AdminCustomers() {
   const { data: customers, isPending } = useQuery(adminCustomersQuery());
   const { data: orders } = useQuery(adminOrdersQuery());
   const [query, setQuery] = useState("");

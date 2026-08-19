@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,9 +15,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { useCart } from "@/lib/cart";
-import { categoriesQuery, storeSettingsQuery } from "@/lib/catalog";
-import { accountSessionQuery } from "@/lib/account";
-import { supabase } from "@/integrations/supabase/client";
+import { categoriesQuery } from "@/lib/catalog";
+import { useAuth } from "@/hooks/use-auth";
 import dictionary from "@/Constants/dictionary";
 
 const navLinks = [
@@ -26,30 +25,32 @@ const navLinks = [
   { to: "/about", label: "Our Story" },
 ];
 
-export function SiteHeader() {
+export function Header() {
   const { count, hydrated } = useCart();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [term, setTerm] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data: settings } = useQuery(storeSettingsQuery());
   const { data: categories } = useQuery(categoriesQuery());
-  const { data: account } = useQuery(accountSessionQuery());
-  const signedIn = Boolean(account?.userId);
+  const { user, loading: authLoading, signOut: authSignOut } = useAuth();
+
+  const signedIn = !authLoading && !!user;
 
   async function signOut() {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    setMenuOpen(false);
-    void navigate({ to: "/login", replace: true });
+    try {
+      await authSignOut();
+    } finally {
+      setMenuOpen(false);
+      void navigate("/login", { replace: true });
+    }
   }
 
   function submitSearch(event: React.FormEvent) {
     event.preventDefault();
+
     const q = term.trim();
+
     setMenuOpen(false);
-    navigate({ to: "/shop", search: q ? { q } : {} });
+    navigate(q ? `/shop?q=${encodeURIComponent(q)}` : "/shop");
   }
 
   return (
@@ -57,14 +58,21 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-7xl items-center gap-3 px-4 sm:px-6 lg:h-20 lg:px-8">
         <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
           <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              aria-label="Open menu"
+            >
               <Menu className="size-5" />
             </Button>
           </SheetTrigger>
+
           <SheetContent side="left" className="w-[85vw] max-w-sm">
             <SheetHeader>
               <SheetTitle className="font-display text-2xl font-normal">{dictionary.siteFullName}</SheetTitle>
             </SheetHeader>
+
             <nav className="mt-2 flex flex-col gap-1 px-4 pb-6">
               {navLinks.map((link) => (
                 <Link
@@ -76,19 +84,22 @@ export function SiteHeader() {
                   {link.label}
                 </Link>
               ))}
+
               <div className="mt-4 gold-rule" />
+
               <p className="eyebrow mt-4 px-2">Collections</p>
+
               {(categories ?? []).map((c) => (
                 <Link
                   key={c.id}
-                  to="/shop"
-                  search={{ category: c.slug }}
+                  to={`/shop?category=${encodeURIComponent(c.slug)}`}
                   onClick={() => setMenuOpen(false)}
                   className="rounded-sm px-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {c.name}
                 </Link>
               ))}
+
               <form onSubmit={submitSearch} className="mt-6 flex gap-2 px-2">
                 <Input
                   value={term}
@@ -96,12 +107,23 @@ export function SiteHeader() {
                   placeholder="Search jewellery"
                   aria-label="Search jewellery"
                 />
-                <Button type="submit" size="icon" variant="secondary" aria-label="Search">
+
+                <Button
+                  type="submit"
+                  size="icon"
+                  variant="secondary"
+                  aria-label="Search"
+                >
                   <Search className="size-4" />
                 </Button>
               </form>
+
               <div className="mt-6 flex flex-col gap-1 px-2">
-                {signedIn ? (
+                {authLoading ? (
+                  <span className="py-2 text-sm text-muted-foreground">
+                    Loading...
+                  </span>
+                ) : signedIn ? (
                   <>
                     <Link
                       to="/my-orders"
@@ -110,6 +132,7 @@ export function SiteHeader() {
                     >
                       My order requests
                     </Link>
+
                     <button
                       type="button"
                       onClick={() => void signOut()}
@@ -127,6 +150,7 @@ export function SiteHeader() {
                     >
                       Sign in
                     </Link>
+
                     <Link
                       to="/signup"
                       onClick={() => setMenuOpen(false)}
@@ -145,6 +169,7 @@ export function SiteHeader() {
           <span className="font-display text-2xl tracking-[0.16em] text-foreground lg:text-[1.75rem]">
             {dictionary.siteFirstName}
           </span>
+
           <span className="hidden text-[0.6rem] uppercase tracking-[0.34em] text-muted-foreground sm:block">
             {dictionary.siteLastName}
           </span>
@@ -152,21 +177,27 @@ export function SiteHeader() {
 
         <nav className="ml-8 hidden items-center gap-8 lg:flex">
           {navLinks.map((link) => (
-            <Link
+            <NavLink
               key={link.to}
               to={link.to}
-              className="text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
-              activeProps={{ className: "text-foreground" }}
+              className={({ isActive }) =>
+                `text-xs uppercase tracking-[0.2em] transition-colors hover:text-foreground ${isActive ? "text-foreground" : "text-muted-foreground"
+                }`
+              }
             >
               {link.label}
-            </Link>
+            </NavLink>
           ))}
         </nav>
 
-        <form onSubmit={submitSearch} className="ml-auto hidden items-center lg:flex">
+        <form
+          onSubmit={submitSearch}
+          className="ml-auto hidden items-center lg:flex"
+        >
           <label htmlFor="site-search" className="sr-only">
             Search jewellery
           </label>
+
           <Input
             id="site-search"
             value={term}
@@ -174,29 +205,54 @@ export function SiteHeader() {
             placeholder="Search"
             className="h-9 w-44 rounded-sm border-0 border-b border-border bg-transparent px-0 text-sm shadow-none focus-visible:ring-0"
           />
-          <Button type="submit" variant="ghost" size="icon" aria-label="Search">
+
+          <Button
+            type="submit"
+            variant="ghost"
+            size="icon"
+            aria-label="Search"
+          >
             <Search className="size-4" />
           </Button>
         </form>
 
         <div className="ml-auto flex items-center gap-1 lg:ml-2">
           <ThemeToggle />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label={signedIn ? "Account menu" : "Sign in"}>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={
+                  authLoading
+                    ? "Loading account"
+                    : signedIn
+                      ? "Account menu"
+                      : "Sign in"
+                }
+              >
                 <User className="size-4" />
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent align="end" className="w-56">
-              {signedIn ? (
+              {authLoading ? (
+                <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+                  Loading...
+                </DropdownMenuLabel>
+              ) : signedIn ? (
                 <>
                   <DropdownMenuLabel className="truncate text-xs font-normal text-muted-foreground">
-                    {account?.profile?.fullName || account?.email}
+                    {user.fullName || user.email}
                   </DropdownMenuLabel>
+
                   <DropdownMenuSeparator />
+
                   <DropdownMenuItem asChild>
                     <Link to="/my-orders">My order requests</Link>
                   </DropdownMenuItem>
+
                   <DropdownMenuItem onSelect={() => void signOut()}>Sign out</DropdownMenuItem>
                 </>
               ) : (
@@ -204,6 +260,7 @@ export function SiteHeader() {
                   <DropdownMenuItem asChild>
                     <Link to="/login">Sign in</Link>
                   </DropdownMenuItem>
+
                   <DropdownMenuItem asChild>
                     <Link to="/signup">Create account</Link>
                   </DropdownMenuItem>
@@ -211,9 +268,19 @@ export function SiteHeader() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button asChild variant="ghost" size="icon" className="relative">
-            <Link to="/cart" aria-label={`Shopping bag, ${hydrated ? count : 0} items`}>
+
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="relative"
+          >
+            <Link
+              to="/cart"
+              aria-label={`Shopping bag, ${hydrated ? count : 0} items`}
+            >
               <ShoppingBag className="size-4" />
+
               {hydrated && count > 0 && (
                 <span className="absolute -right-0.5 -top-0.5 flex size-4 items-center justify-center rounded-full bg-gold text-[0.6rem] font-medium text-gold-foreground">
                   {count}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { supabase } from "@/integrations/supabase/client";
-import dictionary from "@/Constants/dictionary";
+import api from "@/Services/api";
+import { isSafeRedirect } from "@/lib/redirect";
 
 const signupSchema = z
   .object({
@@ -33,28 +33,10 @@ const signupSchema = z
     path: ["confirmPassword"],
   });
 
-export const Route = createFileRoute("/signup")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: `Create an account — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Create a ${dictionary.siteFullName} account to track your jewellery order requests.`,
-      },
-      { property: "og:title", content: `Create an account — ${dictionary.siteFullName}` },
-      {
-        property: "og:description",
-        content: `Track your jewellery order requests with a ${dictionary.siteFullName} account.`,
-      },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: SignupPage,
-});
-
-function SignupPage() {
+export default function SignupPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") ?? undefined;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [mobile, setMobile] = useState("");
@@ -64,6 +46,10 @@ function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+
+  const safeRedirectTo = isSafeRedirect(redirectTo)
+    ? redirectTo
+    : undefined;
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -82,23 +68,19 @@ function SignupPage() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      await api.post("/Auth/Signup", {
+        fullName: parsed.data.name,
         email: parsed.data.email,
+        mobileNumber: parsed.data.mobile,
         password: parsed.data.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/login`,
-          data: { full_name: parsed.data.name, phone: parsed.data.mobile },
-        },
       });
-      if (error) {
-        toast.error(
-          error.message.toLowerCase().includes("already")
-            ? "An account with this email already exists."
-            : error.message,
-        );
-        return;
-      }
+
       setSent(true);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ??
+        "Unable to create your account. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -114,7 +96,12 @@ function SignupPage() {
             We've sent a confirmation link to <span className="text-foreground">{email}</span>.
             Click it to activate your account, then sign in.
           </p>
-          <Button className="mt-8" onClick={() => void navigate({ to: "/login" })}>
+          <Button
+            className="mt-8"
+            onClick={() =>
+              void navigate(safeRedirectTo ? `/login?redirectTo=${encodeURIComponent(safeRedirectTo)}` : "/login")
+            }
+          >
             Go to sign in
           </Button>
         </section>
@@ -223,7 +210,10 @@ function SignupPage() {
 
         <p className="mt-8 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/login" className="text-foreground underline underline-offset-4">
+          <Link
+            to={safeRedirectTo ? `/login?redirectTo=${encodeURIComponent(safeRedirectTo)}` : "/login"}
+            className="text-foreground underline underline-offset-4"
+          >
             Sign in
           </Link>
         </p>

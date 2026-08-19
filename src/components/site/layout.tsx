@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
-import { SiteHeader } from "./header";
-import { SiteFooter } from "./footer";
+import { Header } from "./header";
+import { Footer } from "./footer";
 
 export function SiteLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <SiteHeader />
+      <Header />
       <main className="flex-1">{children}</main>
-      <SiteFooter />
+      <Footer />
     </div>
   );
 }

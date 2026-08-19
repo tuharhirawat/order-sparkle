@@ -1,53 +1,35 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Loader2, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ThemeToggle } from "@/components/site/theme-toggle";
-import { adminSessionQuery } from "@/lib/admin-session";
-import { claimFirstAdmin } from "@/lib/admin.functions";
+import { useAuth } from "@/hooks/use-auth";
+import api from "@/Services/api";
 import dictionary from "@/Constants/dictionary";
-
-export const Route = createFileRoute("/admin")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: `Studio Admin — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Private studio console for managing the ${dictionary.siteFullName} catalogue and orders.`,
-      },
-      { property: "og:title", content: `Studio Admin — ${dictionary.siteFullName}` },
-      { property: "og:description", content: "Private studio console." },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-  component: AdminLayout,
-});
 
 const NAV: {
   to: "/admin" | "/admin/orders" | "/admin/products" | "/admin/categories" | "/admin/customers";
   label: string;
   exact?: boolean;
 }[] = [
-  { to: "/admin", label: "Dashboard", exact: true },
-  { to: "/admin/orders", label: "Orders" },
-  { to: "/admin/products", label: "Products" },
-  { to: "/admin/categories", label: "Categories" },
-  { to: "/admin/customers", label: "Customers" },
-];
+    { to: "/admin", label: "Dashboard", exact: true },
+    { to: "/admin/orders", label: "Orders" },
+    { to: "/admin/products", label: "Products" },
+    { to: "/admin/categories", label: "Categories" },
+    { to: "/admin/customers", label: "Customers" },
+  ];
 
-function AdminLayout() {
-  const { data: session, isPending } = useQuery(adminSessionQuery());
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+export default function AdminLayout() {
+  const { pathname } = useLocation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { signOut: authSignOut, user, loading } = useAuth();
 
-  if (isPending) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <Loader2 className="size-5 animate-spin text-muted-foreground" />
@@ -55,14 +37,14 @@ function AdminLayout() {
     );
   }
 
-  if (!session?.userId) return <AdminAuthCard />;
-  if (!session.isAdmin) return <NoAccessCard anyAdminExists={session.anyAdminExists} />;
+  if (!user?.userId) return <AdminAuthCard />;
+  if (!user.isAdmin) return <NoAccessCard anyAdminExists={user.anyAdminExists} />;
 
   const signOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
-    void navigate({ to: "/admin", replace: true });
+    await authSignOut();
+    void navigate("/admin", { replace: true });
   };
 
   return (
@@ -79,11 +61,10 @@ function AdminLayout() {
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`rounded-sm px-3 py-2 text-xs uppercase tracking-[0.16em] transition-colors ${
-                    active
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`rounded-sm px-3 py-2 text-xs uppercase tracking-[0.16em] transition-colors ${active
+                    ? "bg-secondary text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                   {item.label}
                 </Link>
@@ -91,7 +72,7 @@ function AdminLayout() {
             })}
           </nav>
           <div className="ml-auto flex items-center gap-2">
-            <span className="hidden text-xs text-muted-foreground sm:block">{session.email}</span>
+            <span className="hidden text-xs text-muted-foreground sm:block">{user?.email}</span>
             <ThemeToggle />
             <Button
               variant="ghost"
@@ -124,8 +105,10 @@ function AdminLayout() {
 
 function AdminAuthCard() {
   const queryClient = useQueryClient();
+  const { refreshUser, signOut: authSignOut } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [busy, setBusy] = useState(false);
 
@@ -135,6 +118,10 @@ function AdminAuthCard() {
       toast.error("Enter a valid email address");
       return;
     }
+    if (mode === "signup" && !/^[6-9]\d{9}$/.test(mobileNumber.trim())) {
+      toast.error("Enter a valid 10-digit Indian mobile number");
+      return;
+    }
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters");
       return;
@@ -142,26 +129,30 @@ function AdminAuthCard() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        await api.post("/Auth/Signup", {
+          fullName: (email.trim().split("@")[0] || "Studio User").trim(),
           email: email.trim(),
+          mobileNumber: mobileNumber.trim(),
           password,
-          options: { emailRedirectTo: `${window.location.origin}/admin` },
         });
-        if (error) throw error;
         toast.success("Account created", {
-          description: "If email confirmation is on, confirm it and then sign in.",
+          description: "Sign in with the same email and password to continue.",
         });
         setMode("signin");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({
+        await api.post("/Auth/Login", {
           email: email.trim(),
           password,
         });
-        if (error) throw error;
+        await refreshUser();
         await queryClient.invalidateQueries({ queryKey: ["admin-session"] });
       }
-    } catch (error) {
-      toast.error("Sign in failed", { description: (error as Error).message });
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ??
+        (mode === "signin" ? "Sign in failed" : "Account creation failed"),
+        { description: error?.response?.data?.message ?? "Please try again." },
+      );
     } finally {
       setBusy(false);
     }
@@ -190,6 +181,33 @@ function AdminAuthCard() {
               required
             />
           </div>
+
+           {/* mobile number */}
+          {mode === "signup" && (
+            <div>
+              <Label
+                htmlFor="admin-mobile"
+                className="text-xs uppercase tracking-[0.16em]"
+              >
+                Mobile number
+              </Label>
+
+              <Input
+                id="admin-mobile"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                value={mobileNumber}
+                onChange={(e) => setMobileNumber(e.target.value)}
+                className="mt-2 h-11 rounded-sm"
+                placeholder="10-digit mobile number"
+                maxLength={10}
+                required
+              />
+            </div>
+          )}
+
+          {/* Password */}
           <div>
             <Label htmlFor="admin-password" className="text-xs uppercase tracking-[0.16em]">
               Password
@@ -236,6 +254,7 @@ function AdminAuthCard() {
 
 function NoAccessCard({ anyAdminExists }: { anyAdminExists: boolean }) {
   const queryClient = useQueryClient();
+  const { signOut: authSignOut, claimFirstAdmin } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const claim = async () => {
@@ -256,7 +275,7 @@ function NoAccessCard({ anyAdminExists }: { anyAdminExists: boolean }) {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await authSignOut();
     await queryClient.invalidateQueries({ queryKey: ["admin-session"] });
   };
 

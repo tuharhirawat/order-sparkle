@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -18,10 +17,6 @@ import {
 } from "@/components/ui/select";
 import { formatCurrency, slugify } from "@/lib/format";
 import { adminCategoriesQuery, adminProductsQuery } from "@/lib/admin-data";
-
-export const Route = createFileRoute("/admin/products")({
-  component: AdminProducts,
-});
 
 interface Draft {
   name: string;
@@ -43,7 +38,7 @@ const EMPTY: Draft = {
   imageUrl: "",
 };
 
-function AdminProducts() {
+export default function AdminProducts() {
   const { data: products, isPending } = useQuery(adminProductsQuery());
   const { data: categories } = useQuery(adminCategoriesQuery());
   const queryClient = useQueryClient();

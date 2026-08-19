@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Trash2 } from "lucide-react";
@@ -11,11 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { slugify } from "@/lib/format";
 import { adminCategoriesQuery } from "@/lib/admin-data";
 
-export const Route = createFileRoute("/admin/categories")({
-  component: AdminCategories,
-});
-
-function AdminCategories() {
+export default function AdminCategories() {
   const { data: categories } = useQuery(adminCategoriesQuery());
   const queryClient = useQueryClient();
   const [name, setName] = useState("");

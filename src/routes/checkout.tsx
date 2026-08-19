@@ -1,6 +1,5 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
+import { Link, useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Lock } from "lucide-react";
 import { toast } from "sonner";
@@ -14,24 +13,7 @@ import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import { createOrderRequest, type OrderConfirmation } from "@/lib/orders.functions";
 import { saveLastOrder } from "@/lib/last-order";
-import { accountSessionQuery } from "@/lib/account";
-import dictionary from "@/Constants/dictionary";
-
-export const Route = createFileRoute("/checkout")({
-  head: () => ({
-    meta: [
-      { title: `Request Your Order — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Share your delivery details to request your ${dictionary.siteFullName} order. We record it instantly and confirm on WhatsApp.`,
-      },
-      { property: "og:title", content: `Request Your Order — ${dictionary.siteFullName}` },
-      { property: "og:description", content: `Request your ${dictionary.siteFullName} order in a minute.` },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: CheckoutPage,
-});
+import { useAuth } from "@/hooks/use-auth";
 
 interface FormState {
   fullName: string;
@@ -70,21 +52,22 @@ function validate(form: FormState): Partial<Record<keyof FormState, string>> {
   return errors;
 }
 
-function CheckoutPage() {
+export default function CheckoutPage() {
   const { items, subtotal, clear, hydrated } = useCart();
   const navigate = useNavigate();
-  const submitOrder = useServerFn(createOrderRequest);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
-  const { data: account } = useQuery(accountSessionQuery());
+  const { user: account } = useAuth();
   const prefilled = useRef(false);
   useEffect(() => {
     if (prefilled.current || !account?.userId) return;
+
     prefilled.current = true;
+    
     setForm((prev) => ({
       ...prev,
-      fullName: prev.fullName || account.profile?.fullName || "",
-      phone: prev.phone || account.profile?.phone || "",
+      fullName: prev.fullName || account.fullName || "",
+      phone: prev.phone || account.mobileNumber || "",
       email: prev.email || account.email || "",
     }));
   }, [account]);
@@ -105,8 +88,7 @@ function CheckoutPage() {
 
   const mutation = useMutation({
     mutationFn: (): Promise<OrderConfirmation> =>
-      submitOrder({
-        data: {
+      createOrderRequest({
           idempotencyKey: idempotencyKey.current,
           customer: {
             fullName: form.fullName.trim(),
@@ -119,16 +101,12 @@ function CheckoutPage() {
             note: form.note.trim(),
           },
           items: payloadItems,
-        },
       }),
     onSuccess: (confirmation) => {
       // Database first: the order exists before we hand off to WhatsApp.
       saveLastOrder(confirmation);
       clear();
-      void navigate({
-        to: "/order/$orderNumber",
-        params: { orderNumber: confirmation.orderNumber },
-      });
+      void navigate(`/order/${confirmation.orderNumber}`);
     },
     onError: (error: Error) => {
       toast.error("We couldn't place your request", { description: error.message });

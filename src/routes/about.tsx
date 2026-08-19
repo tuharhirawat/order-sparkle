@@ -1,28 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { SiteLayout } from "@/components/site/layout";
 import { Button } from "@/components/ui/button";
 import dictionary from "@/Constants/dictionary";
 
-export const Route = createFileRoute("/about")({
-  head: () => ({
-    meta: [
-      { title: `Our Story — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content:
-          "Four decades of hand-finished gold and diamond jewellery from Visakhapatnam. Learn how Maamta's designs, crafts and personally delivers every piece.",
-      },
-      { property: "og:title", content: `Our Story — ${dictionary.siteFullName}` },
-      {
-        property: "og:description",
-        content: "Four decades of hand-finished gold and diamond jewellery from Visakhapatnam.",
-      },
-    ],
-  }),
-  component: AboutPage,
-});
-
-function AboutPage() {
+export default function AboutPage() {
   return (
     <SiteLayout>
       <article className="mx-auto max-w-3xl px-4 py-20 sm:px-6 lg:px-8">

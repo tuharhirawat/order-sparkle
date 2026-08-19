@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
 import { Button } from "@/components/ui/button";
@@ -7,26 +7,7 @@ import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/lib/cart";
 import dictionary from "@/Constants/dictionary";
 
-export const Route = createFileRoute("/cart")({
-  head: () => ({
-    meta: [
-      { title: `Your Bag — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Review the jewellery in your bag and send an order request to the ${dictionary.siteFullName} studio.`,
-      },
-      { property: "og:title", content: `Your Bag — ${dictionary.siteFullName}` },
-      {
-        property: "og:description",
-        content: "Review your selected jewellery and request your order.",
-      },
-      { name: "robots", content: "noindex" },
-    ],
-  }),
-  component: CartPage,
-});
-
-function CartPage() {
+export default function CartPage() {
   const { items, subtotal, setQuantity, removeItem, hydrated } = useCart();
 
   return (
@@ -55,8 +36,7 @@ function CartPage() {
                   className="flex gap-5 py-6"
                 >
                   <Link
-                    to="/product/$slug"
-                    params={{ slug: item.slug }}
+                    to={`/product/${item.slug}`}
                     className="size-24 shrink-0 overflow-hidden rounded-sm bg-surface sm:size-28"
                   >
                     {item.imageUrl && (
@@ -67,8 +47,7 @@ function CartPage() {
                     <div className="flex justify-between gap-4">
                       <div>
                         <Link
-                          to="/product/$slug"
-                          params={{ slug: item.slug }}
+                          to={`/product/${item.slug}`}
                           className="font-display text-xl transition-colors hover:text-gold"
                         >
                           {item.name}

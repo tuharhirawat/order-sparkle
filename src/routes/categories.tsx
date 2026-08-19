@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
@@ -6,25 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
 import dictionary from "@/Constants/dictionary";
 
-export const Route = createFileRoute("/categories")({
-  head: () => ({
-    meta: [
-      { title: `Collections — ${dictionary.siteFullName}` },
-      {
-        name: "description",
-        content: `Browse ${dictionary.siteFullName} collections: rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.`,
-      },
-      { property: "og:title", content: `Collections — ${dictionary.siteFullName}` },
-      {
-        property: "og:description",
-        content: "Rings, necklaces, earrings and bracelets in hallmarked gold and certified diamonds.",
-      },
-    ],
-  }),
-  component: CategoriesPage,
-});
-
-function CategoriesPage() {
+export default function CategoriesPage() {
   const { data: categories, isPending } = useQuery(categoriesQuery());
   const { data: products } = useQuery(productsQuery());
 
@@ -45,8 +27,7 @@ function CategoriesPage() {
                 return (
                   <Link
                     key={category.id}
-                    to="/shop"
-                    search={{ category: category.slug }}
+                    to={`/shop?category=${encodeURIComponent(category.slug)}`}
                     className="surface-panel group flex min-h-56 flex-col justify-between rounded-sm p-10 transition-shadow hover:shadow-lifted"
                   >
                     <div>

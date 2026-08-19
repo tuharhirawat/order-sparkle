@@ -1,4 +1,4 @@
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { Check, Minus, Plus, ShieldCheck, Truck } from "lucide-react";
@@ -18,40 +18,8 @@ import {
 } from "@/lib/catalog";
 import dictionary from "@/Constants/dictionary";
 
-export const Route = createFileRoute("/product/$slug")({
-  loader: async ({ context, params }) => {
-    const product = await context.queryClient.ensureQueryData(productQuery(params.slug));
-    if (!product) throw notFound();
-    return { product };
-  },
-  head: ({ loaderData }) => {
-    if (!loaderData) {
-      return {
-        meta: [
-          { title: `Piece unavailable — ${dictionary.siteFullName}` },
-          { name: "robots", content: "noindex" },
-        ],
-      };
-    }
-    const { product } = loaderData;
-    const description =
-      product.description?.slice(0, 155) ??
-      `${product.name} in ${product.material ?? "fine jewellery"}, handcrafted by ${dictionary.siteFullName}.`;
-    return {
-      meta: [
-        { title: `${product.name} — ${dictionary.siteFullName}` },
-        { name: "description", content: description },
-        { property: "og:title", content: `${product.name} — ${dictionary.siteFullName}` },
-        { property: "og:description", content: description },
-        { property: "og:type", content: "product" },
-      ],
-    };
-  },
-  component: ProductPage,
-});
-
-function ProductPage() {
-  const { slug } = Route.useParams();
+export default function ProductPage() {
+  const { slug = "" } = useParams();
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { data: product } = useQuery(productQuery(slug));
@@ -96,7 +64,7 @@ function ProductPage() {
       },
       quantity,
     );
-    if (goToCart) void navigate({ to: "/cart" });
+    if (goToCart) void navigate("/cart");
     else toast.success("Added to your bag", { description: product.name });
   };
 
@@ -114,8 +82,7 @@ function ProductPage() {
             <>
               <span className="px-2">/</span>
               <Link
-                to="/shop"
-                search={{ category: product.categories.slug }}
+                to={`/shop?category=${encodeURIComponent(product.categories.slug)}`}
                 className="transition-colors hover:text-foreground"
               >
                 {product.categories.name}

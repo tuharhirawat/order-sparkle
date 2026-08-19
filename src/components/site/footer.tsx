@@ -1,10 +1,9 @@
-import { Link } from "@tanstack/react-router";
+import { Link } from "react-router-dom";
 import dictionary from "@/Constants/dictionary";
 import { useQuery } from "@tanstack/react-query";
-import { categoriesQuery, storeSettingsQuery } from "@/lib/catalog";
+import { categoriesQuery } from "@/lib/catalog";
 
-export function SiteFooter() {
-  const { data: settings } = useQuery(storeSettingsQuery());
+export function Footer() {
   const { data: categories } = useQuery(categoriesQuery());
 
   return (
@@ -13,7 +12,7 @@ export function SiteFooter() {
         <div className="md:col-span-2">
           <p className="font-display text-2xl tracking-[0.16em]">{dictionary.siteFullName}</p>
           <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-            {settings?.tagline ?? "Handcrafted heirlooms in 22k gold and diamond."}
+            Handcrafted heirlooms in 22k gold and diamond.
           </p>
           <p className="mt-6 text-sm text-muted-foreground">
             Every order is confirmed personally on WhatsApp before payment.
@@ -25,8 +24,7 @@ export function SiteFooter() {
             {(categories ?? []).map((c) => (
               <li key={c.id}>
                 <Link
-                  to="/shop"
-                  search={{ category: c.slug }}
+                  to={`/shop?category=${encodeURIComponent(c.slug)}`}
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
                 >
                   {c.name}
@@ -53,27 +51,22 @@ export function SiteFooter() {
                 Your bag
               </Link>
             </li>
-            {settings?.support_email && (
-              <li>
-                <a
-                  href={`mailto:${settings.support_email}`}
-                  className="transition-colors hover:text-foreground"
-                >
-                  {settings.support_email}
-                </a>
-              </li>
-            )}
+            <li>
+              <a
+                href={`mailto:${dictionary.footerDetails.supportEmail}`}
+                className="transition-colors hover:text-foreground"
+              >
+                {dictionary.footerDetails.supportEmail}
+              </a>
+            </li>
           </ul>
         </div>
       </div>
       <div className="border-t border-border">
-        <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-6 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+        <div className="mx-auto flex max-w-7xl justify-center px-4 py-6 text-center text-xs text-muted-foreground sm:px-6 lg:px-8">
           <p>
             © {new Date().getFullYear()} {dictionary.siteFullName}. All rights reserved.
           </p>
-          <Link to="/admin" className="transition-colors hover:text-foreground">
-            Store admin
-          </Link>
         </div>
       </div>
     </footer>
