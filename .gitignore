@@ -1,0 +1,38 @@
+# Build output
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio Code
+.vscode/
+
+# Rider
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Generated IDE/database files
+*.db
+*.db-shm
+*.db-wal
+
+# Logs
+*.log
+
+# ASP.NET local development secrets
+appsettings.Local.json
+
+# Environment files
+.env
+.env.*
+
+# User-specific project files
+*.csproj.user
