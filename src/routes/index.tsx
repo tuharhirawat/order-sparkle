@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Gem, MessageCircle, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
 import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card";
+import { CategoryRail } from "@/components/site/category-rail";
 import { Button } from "@/components/ui/button";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
 
@@ -89,7 +90,11 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+        <CategoryRail />
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Curated</p>
