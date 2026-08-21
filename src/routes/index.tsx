@@ -89,7 +89,11 @@ function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+        <CategoryRail />
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Curated</p>
