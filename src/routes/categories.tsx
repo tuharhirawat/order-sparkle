@@ -34,6 +34,7 @@ function CategoriesPage() {
       <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <p className="eyebrow">Shop by</p>
         <h1 className="mt-2 font-display text-5xl">Collections</h1>
+        <CategoryRail className="mt-10" />
         <div className="mt-12 grid gap-6 sm:grid-cols-2">
           {isPending
             ? Array.from({ length: 4 }).map((_, i) => (
