@@ -12,9 +12,7 @@ function imageForCategory(category: Category, products: Product[] | undefined) {
     (p) => p.categories?.slug === category.slug && p.product_images?.length,
   );
   const images = match?.product_images ?? [];
-  const primary =
-    images.find((i) => i.is_primary) ??
-    [...images].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
+  const primary = [...images].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0];
   return primary?.url ?? null;
 }
 
