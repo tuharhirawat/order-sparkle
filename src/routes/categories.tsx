@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
+import { CategoryRail } from "@/components/site/category-rail";
 import { Skeleton } from "@/components/ui/skeleton";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
 

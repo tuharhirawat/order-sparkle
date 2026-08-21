@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Gem, MessageCircle, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
 import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card";
+import { CategoryRail } from "@/components/site/category-rail";
 import { Button } from "@/components/ui/button";
 import { categoriesQuery, productsQuery } from "@/lib/catalog";
 
