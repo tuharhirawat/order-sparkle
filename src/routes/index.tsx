@@ -3,9 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight, Gem, MessageCircle, ShieldCheck } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
 import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card";
+import { CategoryRail } from "@/components/site/CategoryCarousel";
 import { Button } from "@/components/ui/button";
-import { categoriesQuery, productsQuery } from "@/lib/catalog";
-import dictionary from "@/Constants/dictionary";
+import { productsQuery } from "@/lib/catalog";
 
 const promises = [
   {
@@ -27,7 +27,6 @@ const promises = [
 
 export default function HomePage() {
   const { data: featured, isPending } = useQuery(productsQuery({ featuredOnly: true, limit: 8 }));
-  const { data: categories } = useQuery(categoriesQuery());
 
   return (
     <SiteLayout>
@@ -87,7 +86,11 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-8">
+        <CategoryRail />
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="eyebrow">Curated</p>
@@ -118,14 +121,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      {/* OLD CATEGORY SECTION THAT CAN BE REMOVED ONCE CONFIRMED BY BHAIYA */}
+      {/* <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <p className="eyebrow">Shop by</p>
         <h2 className="mt-2 font-display text-4xl">Collections</h2>
         <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {(categories ?? []).map((category) => (
             <Link
               key={category.id}
-              to={`/shop?category=${encodeURIComponent(category.slug)}`}
+              to={`/shop?category=${encodeURIComponent(category.urlName)}`}
               className="surface-panel group flex flex-col justify-between rounded-sm p-8 transition-shadow hover:shadow-lifted"
             >
               <div>
@@ -141,7 +145,8 @@ export default function HomePage() {
             </Link>
           ))}
         </div>
-      </section>
+      </section> */}
+
     </SiteLayout>
   );
 }

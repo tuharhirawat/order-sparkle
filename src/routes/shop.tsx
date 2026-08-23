@@ -1,4 +1,4 @@
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
@@ -68,15 +68,15 @@ export default function ShopPage() {
 
   const update = (patch: Partial<ShopSearch>) =>
     setSearchParams((previous) => {
-        const next = { ...Object.fromEntries(previous), ...patch } as Record<string, unknown>;
-        Object.keys(next).forEach((key) => {
-          const value = next[key];
-          if (value === undefined || value === "" || value === false) delete next[key];
-        });
-        return next as Record<string, string>;
+      const next = { ...Object.fromEntries(previous), ...patch } as Record<string, unknown>;
+      Object.keys(next).forEach((key) => {
+        const value = next[key];
+        if (value === undefined || value === "" || value === false) delete next[key];
+      });
+      return next as Record<string, string>;
     });
 
-  const activeCategory = categories?.find((c) => c.slug === search.category);
+  const activeCategory = categories?.find((c) => c.urlName === search.category);
   const hasFilters = Boolean(
     search.q || search.category || search.min || search.max || search.inStock,
   );
@@ -111,13 +111,13 @@ export default function ShopPage() {
             >
               All
             </Button>
-            {(categories ?? []).map((c) => (
+            {(categories ?? []).filter((c) => c.productCount > 0).map((c) => (
               <Button
                 key={c.id}
-                variant={search.category === c.slug ? "secondary" : "outline"}
+                variant={search.category === c.urlName ? "secondary" : "outline"}
                 size="sm"
                 className="rounded-sm text-xs uppercase tracking-[0.14em]"
-                onClick={() => update({ category: c.slug })}
+                onClick={() => update({ category: c.urlName })}
               >
                 {c.name}
               </Button>
@@ -159,8 +159,8 @@ export default function ShopPage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All collections</SelectItem>
-                {(categories ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.slug}>
+                {(categories ?? []).filter((c) => c.productCount > 0).map((c) => (
+                  <SelectItem key={c.id} value={c.urlName}>
                     {c.name}
                   </SelectItem>
                 ))}

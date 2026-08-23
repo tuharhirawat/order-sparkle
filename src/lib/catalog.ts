@@ -1,21 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import type { Tables } from "@/integrations/supabase/types";
-
-export type Category = Tables<"categories">;
-export type ProductImage = Tables<"product_images">;
-export type ProductVariant = Tables<"product_variants">;
-
-export type Product = Tables<"products"> & {
-  product_images: ProductImage[];
-  product_variants: ProductVariant[];
-  categories: Pick<Category, "name" | "slug"> | null;
-};
-
-export type StoreSettings = Tables<"store_settings">;
-
-export const PRODUCT_SELECT =
-  "*, product_images(*), product_variants(*), categories(name, slug)";
+import api from "@/Services/api";
+import { Product, ProductSummary, Category, ProductVariant } from "@/DBTypes/types";
 
 export type SortKey = "newest" | "price-asc" | "price-desc" | "name";
 
@@ -30,58 +15,55 @@ export interface ProductFilters {
   limit?: number | undefined;
 }
 
-function sortRows(rows: Product[], sort: SortKey): Product[] {
-  const copy = [...rows];
-  switch (sort) {
-    case "price-asc":
-      return copy.sort((a, b) => Number(a.price) - Number(b.price));
-    case "price-desc":
-      return copy.sort((a, b) => Number(b.price) - Number(a.price));
-    case "name":
-      return copy.sort((a, b) => a.name.localeCompare(b.name));
-    default:
-      return copy.sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      );
-  }
-}
+async function fetchProducts(filters: ProductFilters): Promise<ProductSummary[]> {
+  const params = new URLSearchParams();
 
-async function fetchProducts(filters: ProductFilters): Promise<Product[]> {
-  let query = supabase.from("products").select(PRODUCT_SELECT).eq("is_active", true);
-
-  if (filters.featuredOnly) query = query.eq("is_featured", true);
-  if (filters.search) {
-    const term = `%${filters.search.replace(/[%,]/g, "")}%`;
-    query = query.or(`name.ilike.${term},description.ilike.${term},sku.ilike.${term},material.ilike.${term}`);
-  }
-  if (typeof filters.minPrice === "number") query = query.gte("price", filters.minPrice);
-  if (typeof filters.maxPrice === "number") query = query.lte("price", filters.maxPrice);
-  if (filters.limit) query = query.limit(filters.limit);
-
-  const { data, error } = await query;
-  if (error) throw new Error(error.message);
-
-  let rows = (data ?? []) as unknown as Product[];
   if (filters.categorySlug) {
-    rows = rows.filter((p) => p.categories?.slug === filters.categorySlug);
+    params.set("categoryUrlName", filters.categorySlug);
   }
+
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+
+  if (filters.sort) {
+    params.set("sort", filters.sort);
+  }
+
+  if (typeof filters.minPrice === "number") {
+    params.set("minPrice", filters.minPrice.toString());
+  }
+
+  if (typeof filters.maxPrice === "number") {
+    params.set("maxPrice", filters.maxPrice.toString());
+  }
+
+  if (filters.featuredOnly) {
+    params.set("featuredOnly", "true");
+  }
+
   if (filters.inStockOnly) {
-    rows = rows.filter((p) => !p.track_stock || p.stock > 0);
+    params.set("inStockOnly", "true");
   }
-  return sortRows(rows, filters.sort ?? "newest");
+
+  if (filters.limit) {
+    params.set("limit", filters.limit.toString());
+  }
+
+  const response = await api.get<ProductSummary[]>("/Product", {
+    params,
+  });
+
+  return response.data;
 }
 
 export const categoriesQuery = () =>
   queryOptions({
     queryKey: ["categories"],
     queryFn: async (): Promise<Category[]> => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .eq("is_active", true)
-        .order("position", { ascending: true });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+      const response = await api.get<Category[]>("/Product/Categories");
+
+      return response.data;
     },
     staleTime: 60_000,
   });
@@ -93,36 +75,39 @@ export const productsQuery = (filters: ProductFilters = {}) =>
     staleTime: 30_000,
   });
 
-export const productQuery = (slug: string) =>
+export const productQuery = (urlName: string) =>
   queryOptions({
-    queryKey: ["product", slug],
+    queryKey: ["product", urlName],
     queryFn: async (): Promise<Product | null> => {
-      const { data, error } = await supabase
-        .from("products")
-        .select(PRODUCT_SELECT)
-        .eq("slug", slug)
-        .eq("is_active", true)
-        .maybeSingle();
-      if (error) throw new Error(error.message);
-      return (data as unknown as Product) ?? null;
+      try {
+        const response = await api.get<Product>(
+          `/Product/Details/${encodeURIComponent(urlName)}`
+        );
+
+        return response.data;
+      } catch (error: any) {
+        if (error.response?.status === 404) {
+          return null;
+        }
+
+        throw error;
+      }
     },
     staleTime: 30_000,
   });
 
-export function primaryImage(product: Pick<Product, "product_images" | "name">): {
-  url: string | null;
-  alt: string;
-} {
-  const sorted = [...(product.product_images ?? [])].sort((a, b) => a.position - b.position);
-  const first = sorted[0];
-  return { url: first?.url ?? null, alt: first?.alt ?? product.name };
+export function variantPrice(
+  product: Product,
+  variant: ProductVariant | null
+): number {
+  return Number(product.price) + Number(variant?.priceDelta ?? 0);
 }
 
-export function variantPrice(product: Product, variant: ProductVariant | null): number {
-  return Number(product.price) + Number(variant?.price_delta ?? 0);
-}
+export function availableStock(
+  product: Product,
+  variant: ProductVariant | null
+): number {
+  if (!product.trackStock) return 99;
 
-export function availableStock(product: Product, variant: ProductVariant | null): number {
-  if (!product.track_stock) return 99;
   return variant ? variant.stock : product.stock;
 }

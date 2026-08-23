@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { Menu, Search, ShoppingBag, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +14,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "./theme-toggle";
 import { useCart } from "@/lib/cart";
-import { categoriesQuery } from "@/lib/catalog";
 import { useAuth } from "@/hooks/use-auth";
 import dictionary from "@/Constants/dictionary";
 
@@ -30,7 +28,6 @@ export function Header() {
   const navigate = useNavigate();
   const [term, setTerm] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
-  const { data: categories } = useQuery(categoriesQuery());
   const { user, loading: authLoading, signOut: authSignOut } = useAuth();
 
   const signedIn = !authLoading && !!user;
@@ -86,19 +83,6 @@ export function Header() {
               ))}
 
               <div className="mt-4 gold-rule" />
-
-              <p className="eyebrow mt-4 px-2">Collections</p>
-
-              {(categories ?? []).map((c) => (
-                <Link
-                  key={c.id}
-                  to={`/shop?category=${encodeURIComponent(c.slug)}`}
-                  onClick={() => setMenuOpen(false)}
-                  className="rounded-sm px-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {c.name}
-                </Link>
-              ))}
 
               <form onSubmit={submitSearch} className="mt-6 flex gap-2 px-2">
                 <Input

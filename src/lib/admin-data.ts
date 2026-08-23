@@ -1,6 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { Tables, Enums } from "@/integrations/supabase/types";
+import { AdminProduct, Category } from "@/DBTypes/types";
+import api from "@/Services/api";
 
 export type OrderStatus = Enums<"order_status">;
 export type PaymentStatus = Enums<"payment_status">;
@@ -51,26 +53,29 @@ export const adminCustomersQuery = () =>
 export const adminProductsQuery = () =>
   queryOptions({
     queryKey: ["admin", "products"],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("products")
-        .select("*, categories(name, slug), product_images(*), product_variants(*)")
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+    queryFn: async (): Promise<AdminProduct[]> => {
+      const response = await api.get<AdminProduct[]>("/Product/Admin");
+
+      return response.data;
+    },
+  });
+
+export const adminCategoryNamesQuery = () =>
+  queryOptions({
+    queryKey: ["admin", "category-names"],
+    queryFn: async (): Promise<{ id: string; name: string }[]> => {
+      const response = await api.get("/Product/Categories/Name");
+      return response.data;
     },
   });
 
 export const adminCategoriesQuery = () =>
   queryOptions({
     queryKey: ["admin", "categories"],
-    queryFn: async (): Promise<Tables<"categories">[]> => {
-      const { data, error } = await supabase
-        .from("categories")
-        .select("*")
-        .order("position", { ascending: true });
-      if (error) throw new Error(error.message);
-      return data ?? [];
+    queryFn: async (): Promise<Category[]> => {
+      const response = await api.get<Category[]>("/Product/Categories/Admin");
+
+      return response.data;
     },
   });
 

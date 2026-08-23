@@ -1,13 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ImagePlus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { slugify } from "@/lib/format";
+import api from "@/Services/api";
 import { adminCategoriesQuery } from "@/lib/admin-data";
 
 export default function AdminCategories() {
@@ -15,51 +14,82 @@ export default function AdminCategories() {
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["admin", "categories"] });
 
   const create = useMutation({
     mutationFn: async () => {
-      if (name.trim().length < 2) throw new Error("Enter a category name.");
-      const { error } = await supabase.from("categories").insert({
-        name: name.trim(),
-        slug: slugify(name),
-        description: description.trim() || null,
-        position: (categories?.length ?? 0) + 1,
-      });
-      if (error) throw new Error(error.message);
+      if (name.trim().length < 2) {
+        throw new Error("Enter a category name.");
+      }
+
+      const formData = new FormData();
+      formData.append("name", name.trim());
+      if (description.trim()) formData.append("description", description.trim());
+      if (image) formData.append("image", image);
+      await api.post("/Product/Categories", formData);
     },
+
     onSuccess: () => {
       setName("");
       setDescription("");
+      setImage(null);
+      setImagePreview(null);
+
       toast.success("Category added");
+
       void refresh();
     },
-    onError: (e: Error) => toast.error("Could not add category", { description: e.message }),
+
+    onError: (e: any) => {
+      toast.error("Could not add category", {
+        description:
+          e.response?.data?.message ?? "Something went wrong.",
+      });
+    },
   });
 
   const toggle = useMutation({
-    mutationFn: async (input: { id: string; is_active: boolean }) => {
-      const { error } = await supabase
-        .from("categories")
-        .update({ is_active: input.is_active })
-        .eq("id", input.id);
-      if (error) throw new Error(error.message);
+    mutationFn: async (input: { id: string; isActive: boolean }) => {
+      await api.patch(
+        `/Product/Categories/${input.id}/Status`,
+        null,
+        {
+          params: {
+            isActive: input.isActive,
+          },
+        }
+      );
     },
-    onSuccess: () => void refresh(),
-    onError: (e: Error) => toast.error("Update failed", { description: e.message }),
+
+    onSuccess: () => {
+      void refresh();
+    },
+
+    onError: (e: any) => {
+      toast.error("Update failed", {
+        description: e.response?.data?.message ?? "Something went wrong.",
+      });
+    },
   });
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("categories").delete().eq("id", id);
-      if (error) throw new Error(error.message);
+      await api.delete(`/Product/Categories/${id}`);
     },
+
     onSuccess: () => {
       toast.success("Category removed");
       void refresh();
     },
-    onError: (e: Error) => toast.error("Could not remove", { description: e.message }),
+
+    onError: (e: any) => {
+      toast.error("Could not remove", {
+        description: e.response?.data?.message ?? "Something went wrong.",
+      });
+    },
   });
 
   return (
@@ -73,7 +103,8 @@ export default function AdminCategories() {
             <thead className="bg-secondary/60 text-xs uppercase tracking-[0.14em] text-muted-foreground">
               <tr>
                 <th className="px-4 py-3 text-left">Name</th>
-                <th className="px-4 py-3 text-left">Slug</th>
+                <th className="px-4 py-3 text-left">Image</th>
+                <th className="px-4 py-3 text-left">URL Name</th>
                 <th className="px-4 py-3 text-left">Visible</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -82,13 +113,22 @@ export default function AdminCategories() {
               {(categories ?? []).map((category) => (
                 <tr key={category.id}>
                   <td className="px-4 py-3">{category.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{category.slug}</td>
+                  <td className="px-4 py-3">
+                    {category.imageUrl ? (
+                      <img src={category.imageUrl} alt="" className="size-10 rounded-full object-cover" />
+                    ) : (
+                      <span className="grid size-10 place-items-center rounded-full bg-secondary font-display text-gold">
+                        {category.initials ?? category.name.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{category.urlName}</td>
                   <td className="px-4 py-3">
                     <Switch
-                      checked={category.is_active}
+                      checked={category.isActive}
                       aria-label={`Toggle ${category.name}`}
                       onCheckedChange={(checked) =>
-                        toggle.mutate({ id: category.id, is_active: checked })
+                        toggle.mutate({ id: category.id, isActive: checked })
                       }
                     />
                   </td>
@@ -120,6 +160,39 @@ export default function AdminCategories() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="mt-2 h-10 rounded-sm"
+              />
+            </div>
+            <div>
+              <Label htmlFor="cat-image" className="text-xs uppercase tracking-[0.16em]">
+                Image (optional)
+              </Label>
+              <label htmlFor="cat-image" className="mt-2 flex cursor-pointer items-center gap-3 rounded-sm border border-dashed border-border p-3 text-sm text-muted-foreground">
+                {imagePreview ? (
+                  <img src={imagePreview} alt="" className="size-12 rounded-full object-cover" />
+                ) : (
+                  <ImagePlus className="size-5 text-gold" />
+                )}
+                <span>{image ? image.name : "Choose an image"}</span>
+              </label>
+              <Input
+                id="cat-image"
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] ?? null;
+                  if (!file) return;
+                  if (!file.type.startsWith("image/")) {
+                    toast.error("Please choose a valid image.");
+                    return;
+                  }
+                  if (file.size > 5 * 1024 * 1024) {
+                    toast.error("The category image must not exceed 5 MB.");
+                    return;
+                  }
+                  setImage(file);
+                  setImagePreview(URL.createObjectURL(file));
+                }}
               />
             </div>
             <div>

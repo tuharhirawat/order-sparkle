@@ -14,25 +14,25 @@ import {
   productQuery,
   productsQuery,
   variantPrice,
-  type ProductVariant,
 } from "@/lib/catalog";
-import dictionary from "@/Constants/dictionary";
+import { ProductVariant } from "@/DBTypes/types";
 
 export default function ProductPage() {
   const { slug = "" } = useParams();
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { data: product } = useQuery(productQuery(slug));
-  const { data: related } = useQuery(
-    productsQuery({ categorySlug: product?.categories?.slug, limit: 8 }),
-  );
+  const { data: related } = useQuery({
+    ...productsQuery({ categorySlug: product?.category?.urlName, limit: 8 }),
+    enabled: Boolean(product?.category?.urlName),
+  });
 
   const images = useMemo(
-    () => [...(product?.product_images ?? [])].sort((a, b) => a.position - b.position),
+    () => [...(product?.productImages ?? [])].sort((a, b) => a.position - b.position),
     [product],
   );
   const variants = useMemo(
-    () => [...(product?.product_variants ?? [])].sort((a, b) => a.position - b.position),
+    () => [...(product?.productVariants ?? [])].sort((a, b) => a.position - b.position),
     [product],
   );
 
@@ -48,18 +48,19 @@ export default function ProductPage() {
   const stock = availableStock(product, selectedVariant);
   const soldOut = stock <= 0;
   const image = images[activeImage] ?? images[0];
+  const displayImageUrl = image?.url ?? product.category?.imageUrl;
 
   const handleAdd = (goToCart: boolean) => {
     addItem(
       {
         productId: product.id,
         variantId: selectedVariant?.id ?? null,
-        slug: product.slug,
+        slug: product.urlName,
         name: product.name,
-        sku: `${product.sku}${selectedVariant?.sku_suffix ?? ""}`,
+        sku: `${product.productCode}${selectedVariant?.variantCode ?? ""}`,
         variantLabel: selectedVariant?.label ?? null,
         price,
-        imageUrl: image?.url ?? null,
+        imageUrl: displayImageUrl ?? null,
         maxQuantity: stock,
       },
       quantity,
@@ -78,14 +79,14 @@ export default function ProductPage() {
           <Link to="/shop" className="transition-colors hover:text-foreground">
             Shop
           </Link>
-          {product.categories && (
+          {product.category && (
             <>
               <span className="px-2">/</span>
               <Link
-                to={`/shop?category=${encodeURIComponent(product.categories.slug)}`}
+                to={`/shop?category=${encodeURIComponent(product.category.urlName)}`}
                 className="transition-colors hover:text-foreground"
               >
-                {product.categories.name}
+                {product.category.name}
               </Link>
             </>
           )}
@@ -94,10 +95,10 @@ export default function ProductPage() {
         <div className="mt-8 grid gap-12 lg:grid-cols-2">
           <div>
             <div className="overflow-hidden rounded-sm bg-surface">
-              {image?.url ? (
+              {displayImageUrl ? (
                 <img
-                  src={image.url}
-                  alt={image.alt ?? product.name}
+                  src={displayImageUrl}
+                  alt={(product.category?.name ?? product.name).toLocaleLowerCase()}
                   width={1024}
                   height={1024}
                   className="aspect-square w-full object-cover"
@@ -116,9 +117,9 @@ export default function ProductPage() {
                     type="button"
                     onClick={() => setActiveImage(i)}
                     aria-label={`View image ${i + 1}`}
-                    className={`size-20 overflow-hidden rounded-sm border transition-colors ${
-                      i === activeImage ? "border-gold" : "border-border hover:border-foreground/30"
-                    }`}
+                    className={`size-20 overflow-hidden rounded-sm border transition-colors 
+                      ${i === activeImage ? "border-gold" : "border-border hover:border-foreground/30"}
+                    `}
                   >
                     <img src={img.url} alt="" className="size-full object-cover" />
                   </button>
@@ -128,21 +129,19 @@ export default function ProductPage() {
           </div>
 
           <div>
-            {product.categories && <p className="eyebrow">{product.categories.name}</p>}
+            {product.category && <p className="eyebrow">{product.category.name}</p>}
             <h1 className="mt-3 font-display text-4xl leading-tight sm:text-5xl">{product.name}</h1>
             <div className="mt-4 flex items-baseline gap-3">
               <p className="text-2xl text-foreground">{formatCurrency(price)}</p>
-              {product.compare_at_price && Number(product.compare_at_price) > price && (
+              {product.compareAtPrice && Number(product.compareAtPrice) > price && (
                 <p className="text-sm text-muted-foreground line-through">
-                  {formatCurrency(Number(product.compare_at_price))}
+                  {formatCurrency(Number(product.compareAtPrice))}
                 </p>
               )}
             </div>
             <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">
-              Inclusive of all taxes · SKU {product.sku}{selectedVariant?.sku_suffix ?? ""}
+              Inclusive of all taxes · {product.productCode}{selectedVariant?.variantCode ?? ""}
             </p>
-
-            <p className="mt-6 text-sm leading-relaxed text-muted-foreground">{product.description}</p>
 
             {variants.length > 0 && (
               <div className="mt-8">
@@ -150,7 +149,7 @@ export default function ProductPage() {
                 <div className="mt-3 flex flex-wrap gap-2">
                   {variants.map((variant) => {
                     const active = selectedVariant?.id === variant.id;
-                    const out = product.track_stock && variant.stock <= 0;
+                    const out = product.trackStock && variant.stock <= 0;
                     return (
                       <button
                         key={variant.id}
@@ -200,7 +199,7 @@ export default function ProductPage() {
                   <Plus className="size-3.5" />
                 </Button>
               </div>
-              {product.track_stock && stock > 0 && stock <= 3 && (
+              {product.trackStock && stock > 0 && stock <= 3 && (
                 <p className="text-xs uppercase tracking-[0.16em] text-gold">Only {stock} left</p>
               )}
             </div>

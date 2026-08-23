@@ -1,23 +1,22 @@
 import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/format";
-import { primaryImage, type Product } from "@/lib/catalog";
+import { ProductSummary } from "@/DBTypes/types";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function ProductCard({ product }: { product: Product }) {
-  const image = primaryImage(product);
-  const soldOut = product.track_stock && product.stock <= 0;
+export function ProductCard({ product }: { product: ProductSummary }) {
+  const soldOut = !product.inStock;
 
   return (
     <Link
-      to={`/product/${product.slug}`}
+      to={`/product/${product.urlName}`}
       className="group block focus-visible:outline-none"
     >
       <article>
         <div className="relative aspect-square overflow-hidden rounded-sm bg-surface">
-          {image.url ? (
+          {product.thumbnailUrl ? (
             <img
-              src={image.url}
-              alt={image.alt}
+              src={product.thumbnailUrl}
+              alt={product.name}
               loading="lazy"
               width={1024}
               height={1024}
@@ -29,7 +28,7 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
           )}
           <div className="absolute left-3 top-3 flex flex-col gap-1">
-            {product.is_new && (
+            {product.isNew && (
               <span className="rounded-sm bg-gold px-2 py-1 text-[0.6rem] uppercase tracking-[0.18em] text-gold-foreground">
                 New
               </span>
@@ -42,15 +41,15 @@ export function ProductCard({ product }: { product: Product }) {
           </div>
         </div>
         <div className="mt-4 space-y-1">
-          {product.categories?.name && <p className="eyebrow">{product.categories.name}</p>}
+          {product.category?.name && <p className="eyebrow">{product.category.name}</p>}
           <h3 className="font-display text-xl leading-snug text-foreground transition-colors group-hover:text-gold">
             {product.name}
           </h3>
           <p className="flex items-baseline gap-2 text-sm text-foreground">
             {formatCurrency(Number(product.price))}
-            {product.compare_at_price && Number(product.compare_at_price) > Number(product.price) && (
+            {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
               <span className="text-xs text-muted-foreground line-through">
-                {formatCurrency(Number(product.compare_at_price))}
+                {formatCurrency(Number(product.compareAtPrice))}
               </span>
             )}
           </p>

@@ -1,10 +1,7 @@
 import { Link } from "react-router-dom";
 import dictionary from "@/Constants/dictionary";
-import { useQuery } from "@tanstack/react-query";
-import { categoriesQuery } from "@/lib/catalog";
 
 export function Footer() {
-  const { data: categories } = useQuery(categoriesQuery());
 
   return (
     <footer className="mt-24 border-t border-border bg-surface">
@@ -18,21 +15,7 @@ export function Footer() {
             Every order is confirmed personally on WhatsApp before payment.
           </p>
         </div>
-        <div>
-          <p className="eyebrow">Collections</p>
-          <ul className="mt-4 space-y-2">
-            {(categories ?? []).map((c) => (
-              <li key={c.id}>
-                <Link
-                  to={`/shop?category=${encodeURIComponent(c.slug)}`}
-                  className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                >
-                  {c.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+
         <div>
           <p className="eyebrow">Store</p>
           <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
