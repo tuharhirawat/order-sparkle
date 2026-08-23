@@ -1,0 +1,682 @@
+using MamtasImitationJewelleryBE.Data;
+using MamtasImitationJewelleryBE.DTOs.Product;
+using MamtasImitationJewelleryBE.Models;
+using Microsoft.EntityFrameworkCore;
+
+namespace MamtasImitationJewelleryBE.Services
+{
+    public class ProductService
+    {
+        private readonly ApplicationDbContext _context;
+
+        public ProductService(ApplicationDbContext context)
+        {
+            _context = context;
+        }
+
+        //Customer only methods which are only used for viewing the available data
+
+        public async Task<List<CategoryDto>> GetCategoriesAsync()
+            => await GetCategoriesInternalAsync(includeInactive: false);
+
+        public async Task<List<ProductSummaryResponseDto>> GetProductsAsync(
+            string? categoryUrlName = null,
+            string? search = null,
+            string? sort = null,
+            decimal? minPrice = null,
+            decimal? maxPrice = null,
+            bool featuredOnly = false,
+            bool inStockOnly = false,
+            int? limit = null)
+        {
+            var query = BuildProductQuery(includeInactive: false, includeVariants: false);
+
+            if (!string.IsNullOrWhiteSpace(categoryUrlName))
+            {
+                query = query.Where(x =>
+                    x.Category != null &&
+                    x.Category.UrlName == categoryUrlName);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                var searchTerm = search.Trim();
+
+                query = query.Where(x =>
+                    EF.Functions.ILike(x.Name, $"%{searchTerm}%") ||
+                    (x.Description != null &&
+                     EF.Functions.ILike(x.Description, $"%{searchTerm}%")) ||
+                    EF.Functions.ILike(x.ProductCode, $"%{searchTerm}%") ||
+                    (x.Material != null &&
+                     EF.Functions.ILike(x.Material, $"%{searchTerm}%")));
+            }
+
+            if (featuredOnly)
+            {
+                query = query.Where(x => x.IsFeatured);
+            }
+
+            if (minPrice.HasValue)
+            {
+                query = query.Where(x => x.Price >= minPrice.Value);
+            }
+
+            if (maxPrice.HasValue)
+            {
+                query = query.Where(x => x.Price <= maxPrice.Value);
+            }
+
+            if (inStockOnly)
+            {
+                query = query.Where(x => !x.TrackStock || x.Stock > 0);
+            }
+
+            query = sort switch
+            {
+                "price-asc" => query.OrderBy(x => x.Price),
+                "price-desc" => query.OrderByDescending(x => x.Price),
+                "name" => query.OrderBy(x => x.Name),
+                _ => query.OrderByDescending(x => x.CreatedAt)
+            };
+
+            if (limit.HasValue && limit.Value > 0)
+            {
+                query = query.Take(limit.Value);
+            }
+
+            var products = await query.ToListAsync();
+
+            return products.Select(MapProductSummary).ToList();
+        }
+
+        // Admin only methods
+
+        public async Task<List<CategoryDto>> GetAdminCategoriesAsync()
+            => await GetCategoriesInternalAsync(includeInactive: true);
+
+        public async Task<Category> CreateCategoryAsync(CreateCategoryRequestDto request, string baseUrl)
+        {
+            var name = request.Name.Trim();
+
+            if (name.Length < 2)
+                throw new ArgumentException("Enter a valid category name.");
+
+            var urlName = GenerateUrlName(name);
+
+            var urlNameExists = await _context.Categories
+                .AnyAsync(x => x.UrlName == urlName);
+
+            if (urlNameExists)
+                throw new InvalidOperationException("A category with this name already exists.");
+
+            var prefix = await GenerateUniqueCategoryPrefixAsync(name);
+
+            var maxPosition = await _context.Categories
+                .Select(x => (int?)x.Position)
+                .MaxAsync() ?? 0;
+
+            var category = new Category
+            {
+                Id = Guid.NewGuid(),
+                Name = name,
+                UrlName = urlName,
+                Prefix = prefix,
+                Description = string.IsNullOrWhiteSpace(request.Description)
+                    ? null
+                    : request.Description.Trim(),
+                Position = maxPosition + 1,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+
+            if (request.Image != null)
+            {
+                if (!request.Image.ContentType.StartsWith("image/"))
+                    throw new ArgumentException($"'{request.Image.FileName}' is not a valid image.");
+
+                const long maxCategoryImageSize = 10 * 1024 * 1024;
+                if (request.Image.Length > maxCategoryImageSize)
+                    throw new ArgumentException("The category image must not exceed 10 MB.");
+
+                category.ImageUrl = await SaveUploadedImageAsync(request.Image, "categories", baseUrl);
+            }
+
+            _context.Categories.Add(category);
+
+            await _context.SaveChangesAsync();
+
+            return category;
+        }
+
+        public async Task<bool> UpdateCategoryStatusAsync(Guid id, bool isActive)
+        {
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (category == null)
+                return false;
+
+            category.IsActive = isActive;
+            category.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<bool> DeleteCategoryAsync(Guid id)
+        {
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (category == null)
+                return false;
+
+            _context.Categories.Remove(category);
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<ProductResponseDto> CreateProductAsync(
+            CreateProductRequestDto request,
+            string baseUrl)
+        {
+            var name = request.Name.Trim();
+
+            if (name.Length < 2)
+                throw new ArgumentException("Enter a valid product name.");
+
+            if (request.Price <= 0)
+                throw new ArgumentException("Enter a valid price.");
+
+            if (request.CompareAtPrice.HasValue && request.CompareAtPrice.Value <= request.Price)
+                throw new ArgumentException("Compare price must be greater than the product price.");
+
+            if (request.Stock < 0)
+                throw new ArgumentException("Stock cannot be negative.");
+
+            if (!request.CategoryId.HasValue)
+                throw new ArgumentException("Please select a category.");
+
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(x => x.Id == request.CategoryId.Value);
+
+            if (category == null)
+                throw new ArgumentException("Selected category was not found.");
+
+            // Images are optional. Normalize to an empty list so the checks
+            // below never fail on a null collection.
+            var images = request.Images ?? new List<IFormFile>();
+
+            ValidateProductImages(images, maxCount: 5, maxTotalSize: 10 * 1024 * 1024);
+
+            var productCode = GenerateNextProductCode(category);
+
+            var urlName = GenerateUrlName(name);
+
+            var urlNameExists = await _context.Products
+                .AnyAsync(x => x.UrlName == urlName);
+
+            if (urlNameExists)
+            {
+                throw new InvalidOperationException(
+                    "A product with this name already exists.");
+            }
+
+            var now = DateTime.UtcNow;
+
+            var product = new Product
+            {
+                Id = Guid.NewGuid(),
+                ProductCode = productCode,
+                Name = name,
+                UrlName = urlName,
+                Description = string.IsNullOrWhiteSpace(request.Description)
+                    ? null
+                    : request.Description.Trim(),
+                Price = request.Price,
+                CompareAtPrice = request.CompareAtPrice,
+                CategoryId = request.CategoryId,
+                Material = string.IsNullOrWhiteSpace(request.Material)
+                    ? null
+                    : request.Material.Trim(),
+                Details = string.IsNullOrWhiteSpace(request.Details)
+                    ? null
+                    : request.Details.Trim(),
+                Stock = request.Stock,
+                TrackStock = request.TrackStock,
+                IsFeatured = request.IsFeatured,
+                IsNew = true,
+                IsActive = true,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _context.Products.Add(product);
+
+            var imagePosition = 0;
+
+            foreach (var image in images)
+            {                
+                var imageUrl = await SaveUploadedImageAsync(image, "products", baseUrl);
+
+                _context.ProductImages.Add(new ProductImage
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = product.Id,
+                    Url = imageUrl,
+                    Alt = name,
+                    Position = imagePosition++,
+                    CreatedAt = now
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            var createdProduct = await BuildProductQuery(includeInactive: true)
+                .FirstAsync(x => x.Id == product.Id);
+
+            return MapProduct(createdProduct);
+        }
+
+        public async Task<List<ProductResponseDto>> GetAdminProductsAsync()
+        {
+            var products = await BuildProductQuery(includeInactive: true)
+                .OrderByDescending(x => x.CreatedAt)
+                .ToListAsync();
+
+            return products.Select(MapProduct).ToList();
+        }
+
+        public async Task<ProductResponseDto?> UpdateProductAsync(
+            Guid id,
+            UpdateProductRequestDto request,
+            string baseUrl)
+        {
+            var product = await _context.Products
+                .Include(x => x.ProductImages)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (product == null)
+                return null;
+
+            var restrictedFields = new List<string>();
+            if (request.Name != null)
+                restrictedFields.Add("name");
+            if (request.Material != null)
+                restrictedFields.Add("material");
+            if (request.CategoryId.HasValue)
+                restrictedFields.Add("categoryId");
+
+            if (restrictedFields.Count > 0)
+            {
+                throw new ArgumentException(
+                    $"The following product fields are not editable: {string.Join(", ", restrictedFields)}.");
+            }
+
+            if (request.Price.HasValue)
+            {
+                if (request.Price.Value <= 0)
+                    throw new ArgumentException("Price must be greater than zero.");
+
+                product.Price = request.Price.Value;
+            }
+
+            if (request.CompareAtPrice.HasValue)
+            {
+                if (request.CompareAtPrice.Value <= product.Price)
+                    throw new ArgumentException("Compare price must be greater than the product price.");
+
+                product.CompareAtPrice = request.CompareAtPrice.Value;
+            }
+            else if (request.Price.HasValue && product.CompareAtPrice.HasValue && product.CompareAtPrice.Value <= product.Price)
+            {
+                product.CompareAtPrice = null;
+            }
+
+            if (request.Stock.HasValue)
+            {
+                if (request.Stock.Value < 0)
+                    throw new ArgumentException("Stock cannot be negative.");
+
+                product.Stock = request.Stock.Value;
+            }
+
+            if (request.IsActive.HasValue)
+            {
+                product.IsActive = request.IsActive.Value;
+            }
+
+            if (request.IsFeatured.HasValue)
+                product.IsFeatured = request.IsFeatured.Value;
+
+            if (request.Details != null)
+                product.Details = string.IsNullOrWhiteSpace(request.Details) ? null : request.Details.Trim();
+
+            if (request.ManageImages)
+            {
+                var images = request.Images ?? [];
+                var retainedImageIds = product.ProductImages
+                    .Where(image => (request.ExistingImageIds ?? []).Contains(image.Id))
+                    .Select(image => image.Id)
+                    .ToHashSet();
+
+                if (retainedImageIds.Count + images.Count > 5)
+                    throw new ArgumentException("A maximum of 5 images are allowed.");
+
+                ValidateProductImages(images, maxCount: images.Count, maxTotalSize: 10 * 1024 * 1024);
+
+                var removedImages = product.ProductImages
+                    .Where(image => !retainedImageIds.Contains(image.Id))
+                    .ToList();
+
+                foreach (var image in removedImages)
+                {
+                    DeleteProductImageFile(image.Url);
+                    _context.ProductImages.Remove(image);
+                }
+
+                var nextPosition = retainedImageIds.Count == 0
+                    ? 0
+                    : product.ProductImages
+                        .Where(image => retainedImageIds.Contains(image.Id))
+                        .Select(image => image.Position)
+                        .DefaultIfEmpty(-1)
+                        .Max() + 1;
+
+                foreach (var image in images)
+                {
+                    var imageUrl = await SaveUploadedImageAsync(image, "products", baseUrl);
+
+                    _context.ProductImages.Add(new ProductImage
+                    {
+                        Id = Guid.NewGuid(),
+                        ProductId = product.Id,
+                        Url = imageUrl,
+                        Alt = product.Name,
+                        Position = nextPosition++,
+                        CreatedAt = DateTime.UtcNow
+                    });
+                }
+            }
+
+            product.UpdatedAt = DateTime.UtcNow;
+
+            await _context.SaveChangesAsync();
+
+            var updatedProduct = await BuildProductQuery(includeInactive: true)
+                .FirstAsync(x => x.Id == id);
+
+            return MapProduct(updatedProduct);
+        }
+
+        public async Task<bool> DeleteProductAsync(Guid id)
+        {
+            var product = await _context.Products
+                .Include(x => x.ProductImages)
+                .Include(x => x.ProductVariants)
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (product == null)
+                return false;
+
+            _context.Products.Remove(product);
+
+            await _context.SaveChangesAsync();
+
+            return true;
+        }
+
+        public async Task<ProductResponseDto?> GetProductDetailsByUrlNameAsync(string urlName)
+        {
+            var product = await BuildProductQuery(includeInactive: false)
+                .FirstOrDefaultAsync(x => x.UrlName == urlName);
+
+            return product == null
+                ? null
+                : MapProduct(product);
+        }
+
+        public async Task<List<CategoryNamesDto>> GetAllCategoryNamesAsync()
+        {
+            return await _context.Categories
+                .AsNoTracking()
+                .Where(x => x.IsActive)
+                .OrderBy(x => x.Position)
+                .Select(x => new CategoryNamesDto { Id = x.Id, Name = x.Name })
+                .ToListAsync();
+        }
+
+        // Mappers 
+
+        private static ProductResponseDto MapProduct(Product product)
+        {
+            return new ProductResponseDto
+            {
+                Id = product.Id,
+                ProductCode = product.ProductCode,
+                Name = product.Name,
+                UrlName = product.UrlName,
+                Description = product.Description,
+                Price = product.Price,
+                CompareAtPrice = product.CompareAtPrice,
+                Material = product.Material,
+                Details = product.Details,
+                Stock = product.Stock,
+                TrackStock = product.TrackStock,
+                IsFeatured = product.IsFeatured,
+                IsNew = product.CreatedAt >= DateTime.UtcNow.AddHours(-48),
+                IsActive = product.IsActive,
+                CreatedAt = product.CreatedAt,
+                UpdatedAt = product.UpdatedAt,
+
+                Category = MapCategoryResponse(product.Category),
+
+                ProductImages = product.ProductImages
+                    .OrderBy(x => x.Position)
+                    .Select(x => new ProductImageResponseDto
+                    {
+                        Id = x.Id,
+                        Url = x.Url,
+                        Position = x.Position
+                    })
+                    .ToList(),
+
+                ProductVariants = product.ProductVariants
+                    .OrderBy(x => x.Position)
+                    .Select(x => new ProductVariantResponseDto
+                    {
+                        Id = x.Id,
+                        Label = x.Label,
+                        VariantCode = x.VariantCode,
+                        PriceDelta = x.PriceDelta,
+                        Stock = x.Stock,
+                        IsActive = x.IsActive,
+                        Position = x.Position
+                    })
+                    .ToList()
+            };
+        }
+
+        private static ProductSummaryResponseDto MapProductSummary(Product product)
+        {
+            return new ProductSummaryResponseDto
+            {
+                Id = product.Id,
+                Name = product.Name,
+                UrlName = product.UrlName,
+                Price = product.Price,
+                CompareAtPrice = product.CompareAtPrice,
+                IsFeatured = product.IsFeatured,
+                IsNew = product.CreatedAt >= DateTime.UtcNow.AddHours(-48),
+                InStock = !product.TrackStock || product.Stock > 0,
+                ThumbnailUrl = product.ProductImages
+                    .OrderBy(x => x.Position)
+                    .Select(x => x.Url)
+                    .FirstOrDefault() ?? product.Category?.ImageUrl,
+                Category = MapCategoryResponse(product.Category)
+            };
+        }
+
+        private static CategoryResponseDto? MapCategoryResponse(Category? category)
+        {
+            if (category == null) return null;
+
+            return new CategoryResponseDto
+            {
+                Id = category.Id,
+                Name = category.Name,
+                UrlName = category.UrlName,
+                ImageUrl = category.ImageUrl,
+                Initials = category.Prefix
+            };
+        }
+
+        // Private helper methods
+
+        private async Task<List<CategoryDto>> GetCategoriesInternalAsync(bool includeInactive)
+        {
+            var query = _context.Categories.AsNoTracking().AsQueryable();
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return await query
+                .OrderBy(x => x.Position)
+                .Select(x => new CategoryDto
+                {
+                    Id = x.Id,
+                    Name = x.Name,
+                    UrlName = x.UrlName,
+                    Description = x.Description,
+                    ImageUrl = x.ImageUrl,
+                    IsActive = x.IsActive,
+                    CreatedAt = x.CreatedAt,
+                    ProductCount = x.Products.Count(p => p.IsActive),
+                    Initials = x.Prefix
+                })
+                .ToListAsync();
+        }
+
+        private static void ValidateProductImages(IReadOnlyCollection<IFormFile> images, int maxCount, long maxTotalSize)
+        {
+            if (images.Count > maxCount)
+                throw new ArgumentException($"A maximum of {maxCount} images can be uploaded.");
+
+            if (images.Sum(x => x.Length) > maxTotalSize)
+                throw new ArgumentException($"The total size of all images must not exceed {maxTotalSize / (1024 * 1024)} MB.");
+
+            foreach (var image in images)
+            {
+                if (!image.ContentType.StartsWith("image/"))
+                    throw new ArgumentException($"'{image.FileName}' is not a valid image.");
+            }
+        }
+
+        private static async Task<string> SaveUploadedImageAsync(IFormFile image, string subfolder, string baseUrl)
+        {
+            var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
+            var fileName = $"{Guid.NewGuid():N}{extension}";
+            var relativePath = Path.Combine("uploads", subfolder, fileName);
+            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativePath);
+
+            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+            await using var stream = new FileStream(fullPath, FileMode.Create);
+            await image.CopyToAsync(stream);
+
+            return $"{baseUrl}/{relativePath.Replace("\\", "/")}";
+        }
+
+        private IQueryable<Product> BuildProductQuery(bool includeInactive, bool includeVariants = true)
+        {
+            var query = _context.Products
+                .AsNoTracking()
+                .Include(x => x.ProductImages)
+                .Include(x => x.Category)
+                .AsQueryable();
+
+            if (includeVariants)
+                query = query.Include(x => x.ProductVariants);
+
+            if (!includeInactive)
+                query = query.Where(x => x.IsActive);
+
+            return query;
+        }
+
+        private static string GenerateNextProductCode(Category category)
+        {
+            var prefix = $"MIG_{category.Prefix}_";
+            category.LastProductNumber += 1;
+            return $"{prefix}{category.LastProductNumber:D3}";
+        }
+
+        private static string GenerateUrlName(string value)
+        {
+            var result = value.Trim().ToLowerInvariant();
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"[^a-z0-9\s-]",
+                "");
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"\s+",
+                "-");
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"-+",
+                "-");
+
+            return result.Trim('-');
+        }
+
+        private async Task<string> GenerateUniqueCategoryPrefixAsync(string name)
+        {
+            var baseInitials = GetCategoryInitials(name);
+            var candidate = baseInitials;
+            var attempt = 1;
+
+            // Load all currently-used prefixes once, so we don't hit the DB in a loop.
+            var usedPrefixes = await _context.Categories
+                .Select(x => x.Prefix)
+                .ToListAsync();
+
+            var usedSet = usedPrefixes.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            while (usedSet.Contains(candidate))
+            {
+                attempt++;
+                candidate = $"{baseInitials}{attempt}"; // TE -> TE2 -> TE3 -> TE4 ...
+            }
+
+            return candidate;
+        }
+
+        private static string GetCategoryInitials(string name)
+        {
+            var letters = new string(name.Trim().Where(char.IsLetterOrDigit).Take(2).ToArray())
+                .ToUpperInvariant();
+
+            return letters.Length > 0 ? letters : "?";
+        }
+
+        private static void DeleteProductImageFile(string imageUrl)
+        {
+            if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
+                return;
+
+            var relativePath = uri.AbsolutePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
+            var uploadsRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads"));
+            var fullPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativePath));
+
+            if (fullPath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && File.Exists(fullPath))
+                File.Delete(fullPath);
+        }
+    }
+}

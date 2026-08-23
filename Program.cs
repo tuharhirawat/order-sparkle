@@ -35,6 +35,7 @@ namespace MamtasImitationJewelleryBE
             builder.Services.AddScoped<CurrentUserService>();
             builder.Services.AddScoped<AdminAccessService>();
             builder.Services.AddScoped<UserInitializationService>();
+            builder.Services.AddScoped<ProductService>();
 
             // Infrastructure Clients
             builder.Services.AddScoped<IAuthProviderClient, SupabaseAuthClient>();
@@ -67,6 +68,7 @@ namespace MamtasImitationJewelleryBE
             }
 
             app.UseHttpsRedirection();
+            app.UseStaticFiles();
 
             app.UseCors("AllowFrontend");
 

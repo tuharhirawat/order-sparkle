@@ -17,6 +17,14 @@ public partial class ApplicationDbContext : DbContext
 
     public virtual DbSet<UserRole> UserRoles { get; set; }
 
+    public virtual DbSet<Category> Categories { get; set; }
+
+    public virtual DbSet<Product> Products { get; set; }
+
+    public virtual DbSet<ProductImage> ProductImages { get; set; }
+
+    public virtual DbSet<ProductVariant> ProductVariants { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder
@@ -91,6 +99,166 @@ public partial class ApplicationDbContext : DbContext
                 v => v.ToString().ToLower(),
                 v => Enum.Parse<UserRoleType>(v, true)
             );
+        });
+
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("categories_pkey");
+
+            entity.ToTable("categories");
+
+            entity.HasIndex(e => e.UrlName, "categories_url_name_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.LastProductNumber)
+                .HasDefaultValue(0)
+                .HasColumnName("last_product_number");
+            entity.Property(e => e.Prefix).HasColumnName("prefix");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.Position)
+                .HasDefaultValue(0)
+                .HasColumnName("position");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UrlName).HasColumnName("url_name");
+        });
+
+        modelBuilder.Entity<Product>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("products_pkey");
+
+            entity.ToTable("products");
+
+            entity.HasIndex(e => e.IsActive, "idx_products_active");
+
+            entity.HasIndex(e => e.CategoryId, "idx_products_category_id");
+
+            entity.HasIndex(e => e.CreatedAt, "idx_products_created_at").IsDescending();
+
+            entity.HasIndex(e => e.IsFeatured, "idx_products_featured");
+
+            entity.HasIndex(e => e.ProductCode, "products_product_code_key").IsUnique();
+
+            entity.HasIndex(e => e.UrlName, "products_url_name_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CategoryId).HasColumnName("category_id");
+            entity.Property(e => e.CompareAtPrice)
+                .HasPrecision(12, 2)
+                .HasColumnName("compare_at_price");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Description).HasColumnName("description");
+            entity.Property(e => e.Details).HasColumnName("details");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.IsFeatured)
+                .HasDefaultValue(false)
+                .HasColumnName("is_featured");
+            entity.Property(e => e.IsNew)
+                .HasDefaultValue(false)
+                .HasColumnName("is_new");
+            entity.Property(e => e.Material).HasColumnName("material");
+            entity.Property(e => e.Name).HasColumnName("name");
+            entity.Property(e => e.Price)
+                .HasPrecision(12, 2)
+                .HasColumnName("price");
+            entity.Property(e => e.ProductCode).HasColumnName("product_code");
+            entity.Property(e => e.Stock)
+                .HasDefaultValue(0)
+                .HasColumnName("stock");
+            entity.Property(e => e.TrackStock)
+                .HasDefaultValue(true)
+                .HasColumnName("track_stock");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+            entity.Property(e => e.UrlName).HasColumnName("url_name");
+
+            entity.HasOne(d => d.Category).WithMany(p => p.Products)
+                .HasForeignKey(d => d.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("fk_products_category");
+        });
+
+        modelBuilder.Entity<ProductImage>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("product_images_pkey");
+
+            entity.ToTable("product_images");
+
+            entity.HasIndex(e => new { e.ProductId, e.Position }, "idx_product_images_position");
+
+            entity.HasIndex(e => e.ProductId, "idx_product_images_product_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Alt).HasColumnName("alt");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Position)
+                .HasDefaultValue(0)
+                .HasColumnName("position");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.Url).HasColumnName("url");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductImages)
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("fk_product_images_product");
+        });
+
+        modelBuilder.Entity<ProductVariant>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("product_variants_pkey");
+
+            entity.ToTable("product_variants");
+
+            entity.HasIndex(e => new { e.ProductId, e.Position }, "idx_product_variants_position");
+
+            entity.HasIndex(e => e.ProductId, "idx_product_variants_product_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.IsActive)
+                .HasDefaultValue(true)
+                .HasColumnName("is_active");
+            entity.Property(e => e.Label).HasColumnName("label");
+            entity.Property(e => e.Position)
+                .HasDefaultValue(0)
+                .HasColumnName("position");
+            entity.Property(e => e.PriceDelta)
+                .HasPrecision(12, 2)
+                .HasColumnName("price_delta");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.Stock)
+                .HasDefaultValue(0)
+                .HasColumnName("stock");
+            entity.Property(e => e.VariantCode).HasColumnName("variant_code");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.ProductVariants)
+                .HasForeignKey(d => d.ProductId)
+                .HasConstraintName("fk_product_variants_product");
         });
 
         OnModelCreatingPartial(modelBuilder);
