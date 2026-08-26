@@ -125,6 +125,13 @@ function MyOrdersPage() {
                       <p className="text-xs text-muted-foreground">
                         {item.variantLabel ? `${item.variantLabel} · ` : ""}Qty {item.quantity}
                       </p>
+                      {item.available !== null && item.available < item.quantity && (
+                        <p className="mt-1 text-xs text-destructive">
+                          {item.available <= 0
+                            ? "Currently unavailable — will be available soon."
+                            : `Currently unavailable for the requested quantity. Only ${item.available} item${item.available === 1 ? "" : "s"} available.`}
+                        </p>
+                      )}
                     </div>
                     <p className="text-sm text-foreground">{formatCurrency(item.lineTotal)}</p>
                   </li>
