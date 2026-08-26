@@ -118,6 +118,64 @@ export type Database = {
         }
         Relationships: []
       }
+      inventory_movements: {
+        Row: {
+          change: number
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string | null
+          order_id: string | null
+          product_id: string | null
+          reason: string
+          variant_id: string | null
+        }
+        Insert: {
+          change: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          reason?: string
+          variant_id?: string | null
+        }
+        Update: {
+          change?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string | null
+          order_id?: string | null
+          product_id?: string | null
+          reason?: string
+          variant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inventory_movements_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_counters: {
         Row: {
           day: string
@@ -248,6 +306,7 @@ export type Database = {
           id: string
           idempotency_key: string | null
           internal_notes: string | null
+          inventory_committed: boolean
           order_number: string
           payment_status: Database["public"]["Enums"]["payment_status"]
           ship_city: string
@@ -271,6 +330,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           internal_notes?: string | null
+          inventory_committed?: boolean
           order_number: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
           ship_city: string
@@ -294,6 +354,7 @@ export type Database = {
           id?: string
           idempotency_key?: string | null
           internal_notes?: string | null
+          inventory_committed?: boolean
           order_number?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
           ship_city?: string
@@ -552,6 +613,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_order_with_inventory: {
+        Args: {
+          _order_id: string
+          _status?: Database["public"]["Enums"]["order_status"]
+        }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -560,6 +628,20 @@ export type Database = {
         Returns: boolean
       }
       next_order_number: { Args: never; Returns: string }
+      order_item_availability: {
+        Args: { _order_id: string }
+        Returns: {
+          available: number
+          order_item_id: string
+          product_id: string
+          product_name: string
+          requested: number
+          tracked: boolean
+          variant_id: string
+          variant_label: string
+        }[]
+      }
+      release_order_inventory: { Args: { _order_id: string }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "staff"
