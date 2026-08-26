@@ -17,5 +17,7 @@ export interface MyOrderRequest {
     unitPrice: number;
     lineTotal: number;
     imageUrl: string | null;
+    /** Current stock available for this item, or null when stock isn't tracked / already reserved. */
+    available: number | null;
   }[];
 }
