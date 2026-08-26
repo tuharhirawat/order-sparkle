@@ -87,3 +87,40 @@ export function statusTone(status: OrderStatus): string {
       return "border-border bg-secondary text-foreground";
   }
 }
+
+export interface OrderItemAvailability {
+  order_item_id: string;
+  product_id: string | null;
+  variant_id: string | null;
+  product_name: string;
+  variant_label: string | null;
+  requested: number;
+  available: number;
+  tracked: boolean;
+}
+
+/** Live per-item availability for an order, computed in the database. */
+export const orderAvailabilityQuery = (orderId: string, enabled: boolean) =>
+  queryOptions({
+    queryKey: ["admin", "order-availability", orderId],
+    enabled,
+    queryFn: async (): Promise<OrderItemAvailability[]> => {
+      const { data, error } = await supabase.rpc("order_item_availability", { _order_id: orderId });
+      if (error) throw new Error(error.message);
+      return (data ?? []) as OrderItemAvailability[];
+    },
+  });
+
+export const inventoryMovementsQuery = () =>
+  queryOptions({
+    queryKey: ["admin", "inventory-movements"],
+    queryFn: async (): Promise<Tables<"inventory_movements">[]> => {
+      const { data, error } = await supabase
+        .from("inventory_movements")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw new Error(error.message);
+      return data ?? [];
+    },
+  });
