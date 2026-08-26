@@ -63,7 +63,7 @@ export async function loadMyOrderRequests(
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "order_number, created_at, status, payment_status, total, ship_line1, ship_city, ship_state, ship_pincode, customer_note, order_items(product_name, variant_label, quantity, unit_price, line_total, image_url), order_status_events(status, payment_status, note, created_at)",
+      "order_number, created_at, status, payment_status, total, inventory_committed, ship_line1, ship_city, ship_state, ship_pincode, customer_note, order_items(product_id, variant_id, product_name, variant_label, quantity, unit_price, line_total, image_url), order_status_events(status, payment_status, note, created_at)",
     )
     .or(filters.join(","))
     .order("created_at", { ascending: false })
@@ -71,7 +71,52 @@ export async function loadMyOrderRequests(
 
   if (error) throw new Error("We could not load your order requests. Please try again.");
 
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+
+  // Live availability from the database (source of truth) for orders whose
+  // stock has not been reserved yet.
+  const productIds = new Set<string>();
+  const variantIds = new Set<string>();
+  for (const row of rows) {
+    if (row.inventory_committed) continue;
+    for (const item of row.order_items ?? []) {
+      if (item.product_id) productIds.add(item.product_id);
+      if (item.variant_id) variantIds.add(item.variant_id);
+    }
+  }
+
+  const productStock = new Map<string, { stock: number; tracked: boolean }>();
+  const variantStock = new Map<string, number>();
+  if (productIds.size > 0) {
+    const { data: products } = await supabaseAdmin
+      .from("products")
+      .select("id, stock, track_stock")
+      .in("id", [...productIds]);
+    for (const p of products ?? []) productStock.set(p.id, { stock: p.stock, tracked: p.track_stock });
+  }
+  if (variantIds.size > 0) {
+    const { data: variants } = await supabaseAdmin
+      .from("product_variants")
+      .select("id, stock")
+      .in("id", [...variantIds]);
+    for (const v of variants ?? []) variantStock.set(v.id, v.stock);
+  }
+
+  const availabilityFor = (
+    committed: boolean,
+    productId: string | null,
+    variantId: string | null,
+  ): number | null => {
+    if (committed) return null;
+    if (!productId) return 0;
+    const product = productStock.get(productId);
+    if (!product) return 0;
+    if (!product.tracked) return null;
+    if (variantId) return variantStock.get(variantId) ?? 0;
+    return product.stock;
+  };
+
+  return rows.map((row) => ({
     orderNumber: row.order_number,
     createdAt: row.created_at,
     status: row.status,
@@ -97,6 +142,7 @@ export async function loadMyOrderRequests(
       unitPrice: Number(i.unit_price),
       lineTotal: Number(i.line_total),
       imageUrl: i.image_url,
+      available: availabilityFor(row.inventory_committed, i.product_id, i.variant_id),
     })),
   }));
 }
