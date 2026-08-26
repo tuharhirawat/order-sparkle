@@ -19,11 +19,29 @@ import {
   ORDER_STATUSES,
   PAYMENT_STATUSES,
   adminOrdersQuery,
+  orderAvailabilityQuery,
   statusTone,
   type AdminOrder,
   type OrderStatus,
   type PaymentStatus,
 } from "@/lib/admin-data";
+
+/** Order stages that reserve stock. */
+const COMMITTING_STATUSES: OrderStatus[] = [
+  "Confirmed",
+  "PaymentPending",
+  "PaymentReceived",
+  "Processing",
+  "Shipped",
+  "Delivered",
+];
+
+interface Shortage {
+  product_name: string;
+  variant_label: string | null;
+  requested: number;
+  available: number;
+}
 
 export const Route = createFileRoute("/admin/orders")({
   component: AdminOrders,
@@ -44,12 +62,49 @@ function AdminOrders() {
       internal_notes?: string;
     }) => {
       const { id, ...patch } = input;
+
+      // Stock-consuming stages go through an atomic database action that locks
+      // the affected products, validates availability, deducts stock and
+      // records the movement in one transaction.
+      if (patch.status && COMMITTING_STATUSES.includes(patch.status)) {
+        const { data, error } = await supabase.rpc("confirm_order_with_inventory", {
+          _order_id: id,
+          _status: patch.status,
+        });
+        if (error) throw new Error(error.message);
+        const result = data as { ok: boolean; shortages?: Shortage[] };
+        if (!result?.ok) {
+          const lines = (result?.shortages ?? []).map(
+            (s) =>
+              `${s.product_name}${s.variant_label ? ` (${s.variant_label})` : ""}: requested ${s.requested}, only ${s.available} available`,
+          );
+          throw new Error(
+            lines.length > 0 ? `Insufficient stock — ${lines.join("; ")}` : "Insufficient stock for this order.",
+          );
+        }
+        const rest = { ...patch };
+        delete rest.status;
+        if (Object.keys(rest).length > 0) {
+          const { error: restError } = await supabase.from("orders").update(rest).eq("id", id);
+          if (restError) throw new Error(restError.message);
+        }
+        return;
+      }
+
+      if (patch.status === "Cancelled") {
+        const { error: releaseError } = await supabase.rpc("release_order_inventory", { _order_id: id });
+        if (releaseError) throw new Error(releaseError.message);
+      }
+
       const { error } = await supabase.from("orders").update(patch).eq("id", id);
       if (error) throw new Error(error.message);
     },
     onSuccess: () => {
       toast.success("Order updated");
       void queryClient.invalidateQueries({ queryKey: ["admin", "orders"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "order-availability"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin", "products"] });
+      void queryClient.invalidateQueries({ queryKey: ["products"] });
     },
     onError: (error: Error) => toast.error("Update failed", { description: error.message }),
   });
@@ -131,6 +186,10 @@ function OrderRow({
   busy: boolean;
 }) {
   const [notes, setNotes] = useState(order.internal_notes ?? "");
+  const { data: availability } = useQuery(
+    orderAvailabilityQuery(order.id, open && !order.inventory_committed),
+  );
+  const shortages = (availability ?? []).filter((a) => a.tracked && a.available < a.requested);
 
   return (
     <div className="rounded-sm border border-border">
@@ -150,12 +209,33 @@ function OrderRow({
         <span className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
           {order.payment_status}
         </span>
+        {order.inventory_committed && (
+          <span className="text-[0.65rem] uppercase tracking-[0.14em] text-muted-foreground">
+            Stock reserved
+          </span>
+        )}
         <span className="ml-auto text-sm">{formatCurrency(Number(order.total))}</span>
       </button>
 
       {open && (
         <div className="grid gap-8 border-t border-border p-5 lg:grid-cols-2">
           <div>
+            {shortages.length > 0 && (
+              <div className="mb-4 rounded-sm border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+                <p className="text-xs uppercase tracking-[0.14em]">Insufficient stock</p>
+                <ul className="mt-2 space-y-1">
+                  {shortages.map((s) => (
+                    <li key={s.order_item_id}>
+                      {s.product_name}
+                      {s.variant_label ? ` (${s.variant_label})` : ""} — requested {s.requested},{" "}
+                      {s.available <= 0
+                        ? "currently unavailable"
+                        : `only ${s.available} available`}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
             <h3 className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Items</h3>
             <ul className="mt-3 space-y-3 text-sm">
               {order.order_items.map((item) => (
