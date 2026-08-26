@@ -72,7 +72,7 @@ function AdminOrders() {
           _status: patch.status,
         });
         if (error) throw new Error(error.message);
-        const result = data as { ok: boolean; shortages?: Shortage[] };
+        const result = data as unknown as { ok: boolean; shortages?: Shortage[] };
         if (!result?.ok) {
           const lines = (result?.shortages ?? []).map(
             (s) =>
