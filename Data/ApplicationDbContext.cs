@@ -1,8 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using MamtasImitationJewelleryBE.Enums;
+﻿using MamtasImitationJewelleryBE.Enums;
 using MamtasImitationJewelleryBE.Models;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
 
 namespace MamtasImitationJewelleryBE.Data;
 
@@ -24,6 +24,18 @@ public partial class ApplicationDbContext : DbContext
     public virtual DbSet<ProductImage> ProductImages { get; set; }
 
     public virtual DbSet<ProductVariant> ProductVariants { get; set; }
+
+    public virtual DbSet<Order> Orders { get; set; }
+
+    public virtual DbSet<OrderCustomerDetail> OrderCustomerDetails { get; set; }
+
+    public virtual DbSet<OrderItem> OrderItems { get; set; }
+
+    public virtual DbSet<OrderNote> OrderNotes { get; set; }
+
+    public virtual DbSet<OrderTransition> OrderTransitions { get; set; }
+
+    public virtual DbSet<OrderPayment> OrderPayments { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -260,6 +272,205 @@ public partial class ApplicationDbContext : DbContext
                 .HasForeignKey(d => d.ProductId)
                 .HasConstraintName("fk_product_variants_product");
         });
+
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("orders_pkey");
+
+            entity.ToTable("orders");
+
+            entity.HasIndex(e => e.CustomerDetailsId, "idx_orders_customer_details_id");
+
+            entity.HasIndex(e => e.IdempotencyKey, "orders_idempotency_key_key").IsUnique();
+
+            entity.HasIndex(e => e.OrderNumber, "orders_order_number_key").IsUnique();
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.AmountPaid)
+                .HasPrecision(12, 2)
+                .HasColumnName("amount_paid");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CustomerDetailsId).HasColumnName("customer_details_id");
+            entity.Property(e => e.CustomerNote).HasColumnName("customer_note");
+            entity.Property(e => e.IdempotencyKey).HasColumnName("idempotency_key");
+            entity.Property(e => e.OrderNumber).HasColumnName("order_number");
+            entity.Property(e => e.PaymentStatus).HasColumnName("payment_status");
+            entity.Property(e => e.Status).HasColumnName("status");
+            entity.Property(e => e.Subtotal)
+                .HasPrecision(12, 2)
+                .HasColumnName("subtotal");
+            entity.Property(e => e.Total)
+                .HasPrecision(12, 2)
+                .HasColumnName("total");
+            entity.Property(e => e.UpdatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("updated_at");
+
+            entity.HasOne(d => d.CustomerDetails).WithMany(p => p.Orders)
+                .HasForeignKey(d => d.CustomerDetailsId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("orders_customer_details_id_fkey");
+
+            entity.Property(e => e.Status).HasConversion(
+                v => v.ToString().ToLower(),
+                v => Enum.Parse<OrderStatus>(v, true)
+            );
+
+            entity.Property(e => e.PaymentStatus).HasConversion(
+                 v => v.HasValue ? v.Value.ToString().ToLower() : null,
+                 v => string.IsNullOrEmpty(v) ? null : Enum.Parse<PaymentStatus>(v, true)
+            );
+        });
+
+        modelBuilder.Entity<OrderCustomerDetail>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("order_customer_details_pkey");
+
+            entity.ToTable("order_customer_details");
+
+            entity.HasIndex(e => e.Phone, "idx_order_customer_details_phone");
+
+            entity.HasIndex(e => e.ProfileId, "idx_order_customer_details_profile_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.City).HasColumnName("city");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Email).HasColumnName("email");
+            entity.Property(e => e.FullName).HasColumnName("full_name");
+            entity.Property(e => e.Line1).HasColumnName("line1");
+            entity.Property(e => e.Phone).HasColumnName("phone");
+            entity.Property(e => e.Pincode).HasColumnName("pincode");
+            entity.Property(e => e.ProfileId).HasColumnName("profile_id");
+            entity.Property(e => e.State).HasColumnName("state");
+
+            entity.HasOne(d => d.Profile).WithMany(p => p.OrderCustomerDetails)
+                .HasForeignKey(d => d.ProfileId)
+                .HasConstraintName("order_customer_details_profile_id_fkey");
+        });
+
+        modelBuilder.Entity<OrderItem>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("order_items_pkey");
+
+            entity.ToTable("order_items");
+
+            entity.HasIndex(e => e.OrderId, "idx_order_items_order_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.ImageUrl).HasColumnName("image_url");
+            entity.Property(e => e.LineTotal)
+                .HasPrecision(12, 2)
+                .HasColumnName("line_total");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.ProductId).HasColumnName("product_id");
+            entity.Property(e => e.ProductName).HasColumnName("product_name");
+            entity.Property(e => e.ProductSku).HasColumnName("product_sku");
+            entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.UnitPrice)
+                .HasPrecision(12, 2)
+                .HasColumnName("unit_price");
+            entity.Property(e => e.VariantId).HasColumnName("variant_id");
+            entity.Property(e => e.VariantLabel).HasColumnName("variant_label");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderItems)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("order_items_order_id_fkey");
+
+            entity.HasOne(d => d.Product).WithMany(p => p.OrderItems)
+                .HasForeignKey(d => d.ProductId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("order_items_product_id_fkey");
+
+            entity.HasOne(d => d.Variant).WithMany(p => p.OrderItems)
+                .HasForeignKey(d => d.VariantId)
+                .HasConstraintName("order_items_variant_id_fkey");
+        });
+
+        modelBuilder.Entity<OrderNote>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("order_notes_pkey");
+
+            entity.ToTable("order_notes");
+
+            entity.HasIndex(e => e.OrderId, "idx_order_notes_order_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.CreatedBy).HasColumnName("created_by");
+            entity.Property(e => e.Note).HasColumnName("note");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderNotes)
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("order_notes_order_id_fkey");
+        });
+
+        modelBuilder.Entity<OrderTransition>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("order_transitions_pkey");
+
+            entity.ToTable("order_transitions");
+
+            entity.HasIndex(e => e.OrderId, "idx_order_transitions_order_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.ChangedBy).HasColumnName("changed_by");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.Field).HasColumnName("field");
+            entity.Property(e => e.FromValue).HasColumnName("from_value");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+            entity.Property(e => e.ToValue).HasColumnName("to_value");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderTransitions)
+                .HasForeignKey(d => d.OrderId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("order_transitions_order_id_fkey");
+        });
+
+        modelBuilder.Entity<OrderPayment>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("order_payments_pkey");
+
+            entity.ToTable("order_payments");
+
+            entity.HasIndex(e => e.OrderId, "idx_order_payments_order_id");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Amount)
+                .HasPrecision(12, 2)
+                .HasColumnName("amount");
+            entity.Property(e => e.CreatedAt)
+                .HasDefaultValueSql("now()")
+                .HasColumnName("created_at");
+            entity.Property(e => e.OrderId).HasColumnName("order_id");
+
+            entity.HasOne(d => d.Order).WithMany(p => p.OrderPayments)
+                .HasForeignKey(d => d.OrderId)
+                .HasConstraintName("order_payments_order_id_fkey");
+        });
+
+        modelBuilder.HasSequence("order_number_seq").StartsAt(1000L);
 
         OnModelCreatingPartial(modelBuilder);
     }

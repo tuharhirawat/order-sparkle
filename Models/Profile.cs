@@ -20,4 +20,6 @@ public partial class Profile
     public DateTime UpdatedAt { get; set; }
 
     public virtual ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+
+    public virtual ICollection<OrderCustomerDetail> OrderCustomerDetails { get; set; } = new List<OrderCustomerDetail>();
 }

@@ -26,6 +26,25 @@ namespace MamtasImitationJewelleryBE
             builder.Services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            // Only enabled in dev
+            //builder.Services.AddDbContext<ApplicationDbContext>(options =>
+            //{
+            //    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"));
+
+            //    options.EnableDetailedErrors();
+            //    options.EnableSensitiveDataLogging();
+
+            //    options.LogTo(
+            //        Console.WriteLine,
+            //        new[]
+            //        {
+            //            DbLoggerCategory.Database.Command.Name,
+            //            DbLoggerCategory.Update.Name
+            //        },
+            //        LogLevel.Information
+            //    );
+            //});
+
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
@@ -36,6 +55,7 @@ namespace MamtasImitationJewelleryBE
             builder.Services.AddScoped<AdminAccessService>();
             builder.Services.AddScoped<UserInitializationService>();
             builder.Services.AddScoped<ProductService>();
+            builder.Services.AddScoped<OrderService>();
 
             // Infrastructure Clients
             builder.Services.AddScoped<IAuthProviderClient, SupabaseAuthClient>();

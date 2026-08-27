@@ -24,4 +24,6 @@ public partial class ProductVariant
     public DateTime CreatedAt { get; set; }
 
     public virtual Product Product { get; set; } = null!;
+
+    public virtual ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }
