@@ -1,6 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import api from "@/Services/api";
-import { Product, ProductSummary, Category, ProductVariant } from "@/DBTypes/types";
+import { Product, ProductSummary, Category, ProductVariant } from "@/Types/productTypes";
 
 export type SortKey = "newest" | "price-asc" | "price-desc" | "name";
 

@@ -15,10 +15,12 @@ const ProtectedRoute = lazy(() => import("./routes/_authenticated/route"));
 const MyOrdersPage = lazy(() => import("./routes/_authenticated/my-orders"));
 const AdminLayout = lazy(() => import("./routes/admin"));
 const AdminDashboard = lazy(() => import("./routes/admin.index"));
-const AdminOrders = lazy(() => import("./routes/admin.orders"));
 const AdminProducts = lazy(() => import("./routes/admin.products"));
 const AdminCategories = lazy(() => import("./routes/admin.categories"));
 const AdminCustomers = lazy(() => import("./routes/admin.customers"));
+const AdminOrders = lazy(() => import("./routes/AdminOrders"));
+const AdminOrderDetails = lazy(() => import("./components/site/AdminOrderDetails"));
+const AdminOrdersOverview = lazy(() => import("./components/site/AdminOrdersOverview"));
 
 function LoadingPage() {
   return <div className="min-h-screen bg-background" aria-busy="true" />;
@@ -50,18 +52,20 @@ export default function App() {
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/product/:slug" element={<ProductPage />} />
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/order/:orderNumber" element={<OrderConfirmationPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
 
         <Route element={<ProtectedRoute />}>
+          <Route path="/order/:orderNumber" element={<OrderConfirmationPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/my-orders" element={<MyOrdersPage />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
-          <Route path="orders" element={<AdminOrders />} />
+          <Route path="orders" element={<AdminOrdersOverview />} />
+          <Route path="orders/:category" element={<AdminOrders />} />
+          <Route path="orders/:category/:id" element={<AdminOrderDetails />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="categories" element={<AdminCategories />} />
           <Route path="customers" element={<AdminCustomers />} />

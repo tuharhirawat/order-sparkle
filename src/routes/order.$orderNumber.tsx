@@ -1,5 +1,4 @@
 import { Link, useParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { CheckCircle2, MessageCircle } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
@@ -8,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format";
 import { readLastOrder } from "@/lib/last-order";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
-import type { OrderConfirmation } from "@/lib/orders.functions";
+import type { CreateOrderResponse as OrderConfirmation } from "@/Types/orderTypes";
 import dictionary from "@/Constants/dictionary";
 
 export default function OrderConfirmationPage() {

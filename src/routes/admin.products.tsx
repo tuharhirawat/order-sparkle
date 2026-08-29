@@ -18,7 +18,7 @@ import { formatCurrency } from "@/lib/format";
 import { adminCategoryNamesQuery, adminProductsQuery } from "@/lib/admin-data";
 import api from "@/Services/api";
 import { PRODUCT_IMAGE_LIMITS } from "@/Constants/productConstants";
-import type { AdminProduct } from "@/DBTypes/types";
+import type { AdminProduct } from "@/Types/productTypes";
 
 interface Draft {
   name: string;

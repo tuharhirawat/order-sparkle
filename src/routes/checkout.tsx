@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/lib/cart";
-import { createOrderRequest, type OrderConfirmation } from "@/lib/orders.functions";
+import { createOrderRequest } from "@/lib/user-data";
+import { CreateOrderResponse as OrderConfirmation } from "@/Types/orderTypes";
 import { saveLastOrder } from "@/lib/last-order";
 import { useAuth } from "@/hooks/use-auth";
 

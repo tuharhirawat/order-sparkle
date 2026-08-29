@@ -15,7 +15,7 @@ import {
   productsQuery,
   variantPrice,
 } from "@/lib/catalog";
-import { ProductVariant } from "@/DBTypes/types";
+import { ProductVariant } from "@/Types/productTypes";
 
 export default function ProductPage() {
   const { slug = "" } = useParams();

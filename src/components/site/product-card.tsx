@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { formatCurrency } from "@/lib/format";
-import { ProductSummary } from "@/DBTypes/types";
+import { ProductSummary } from "@/Types/productTypes";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function ProductCard({ product }: { product: ProductSummary }) {

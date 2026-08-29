@@ -19,12 +19,3 @@ export function formatDate(value: string | Date): string {
 export function titleCase(value: string): string {
   return value.replace(/([a-z])([A-Z])/g, "$1 $2");
 }
-
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-");
-}

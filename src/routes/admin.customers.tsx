@@ -3,18 +3,17 @@ import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { adminCustomersQuery, adminOrdersQuery } from "@/lib/admin-data";
+import { adminCustomersQuery } from "@/lib/admin-data";
 
 export default function AdminCustomers() {
   const { data: customers, isPending } = useQuery(adminCustomersQuery());
-  const { data: orders } = useQuery(adminOrdersQuery());
   const [query, setQuery] = useState("");
 
   const term = query.trim().toLowerCase();
   const rows = (customers ?? []).filter(
     (c) =>
       !term ||
-      c.full_name.toLowerCase().includes(term) ||
+      c.fullName.toLowerCase().includes(term) ||
       c.phone.includes(term) ||
       (c.email ?? "").toLowerCase().includes(term),
   );
@@ -51,22 +50,16 @@ export default function AdminCustomers() {
                 </td>
               </tr>
             )}
-            {rows.map((customer) => {
-              const theirs = (orders ?? []).filter((o) => o.customer_id === customer.id);
-              const value = theirs
-                .filter((o) => o.status !== "Cancelled")
-                .reduce((sum, o) => sum + Number(o.total), 0);
-              return (
-                <tr key={customer.id}>
-                  <td className="px-4 py-3">{customer.full_name}</td>
-                  <td className="px-4 py-3">{customer.phone}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{customer.email ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(customer.created_at)}</td>
-                  <td className="px-4 py-3 text-right">{theirs.length}</td>
-                  <td className="px-4 py-3 text-right">{formatCurrency(value)}</td>
-                </tr>
-              );
-            })}
+            {rows.map((customer) => (
+              <tr key={customer.profileId}>
+                <td className="px-4 py-3">{customer.fullName}</td>
+                <td className="px-4 py-3">{customer.phone}</td>
+                <td className="px-4 py-3 text-muted-foreground">{customer.email ?? "—"}</td>
+                <td className="px-4 py-3 text-muted-foreground">{formatDate(customer.firstSeen)}</td>
+                <td className="px-4 py-3 text-right">{customer.ordersCount}</td>
+                <td className="px-4 py-3 text-right">{formatCurrency(customer.totalValue)}</td>
+              </tr>
+            ))}
             {!isPending && rows.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
