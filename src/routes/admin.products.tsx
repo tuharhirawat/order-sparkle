@@ -1,5 +1,5 @@
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { Pencil, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -53,6 +53,20 @@ export default function AdminProducts() {
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+
+  const toggleCategoryFilter = (id: string) => {
+    setCategoryFilter((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  };
+
+  const filteredProducts = useMemo(() => {
+    if (categoryFilter.length === 0) return products ?? [];
+    return (products ?? []).filter(
+      (product) => product.category?.id && categoryFilter.includes(product.category.id)
+    );
+  }, [products, categoryFilter]);
 
   const handleImages = (files: FileList | null) => {
     if (!files) return;
@@ -60,7 +74,7 @@ export default function AdminProducts() {
     const selectedFiles = Array.from(files);
 
     if (selectedFiles.length + draft.existingImages.length > PRODUCT_IMAGE_LIMITS.maxCount) {
-      toast.error("Maximum 5 images are allowed.");
+      toast.error(`Maximum ${PRODUCT_IMAGE_LIMITS.maxCount} images are allowed.`);
       return;
     }
 
@@ -304,141 +318,176 @@ export default function AdminProducts() {
       <h1 className="mt-2 font-display text-4xl">Products</h1>
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_340px]">
-        <div className="overflow-x-auto rounded-sm border border-border">
-          <table className="w-full table-fixed text-sm">
-            <colgroup>
-              <col className="w-[25%]" />
-              <col className="w-[15%]" />
-              <col className="w-[20%]" />
-              <col className="w-[22%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-            </colgroup>
-            <thead className="bg-secondary/60 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3 text-left">Product</th>
-                <th className="px-4 py-3 text-left">Collection</th>
-                <th className="px-4 py-3 text-right">Price</th>
-                <th className="px-4 py-3 text-right">Stock</th>
-                <th className="px-4 py-3 text-center">Live</th>
-                <th className="px-4 py-3 text-center">Featured</th>
-                <th className="px-4 py-3 text-center" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {(products ?? []).map((product) => (
-                <tr key={product.id}>
-                  <td className="px-4 py-3">
-                    <div className="flex min-w-0 items-center gap-3">
-                      {product.productImages?.[0]?.url ? (
-                        <img
-                          src={product.productImages[0].url}
-                          alt={product.name}
-                          className="h-12 w-12 shrink-0 rounded-sm border border-border object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border text-xs text-muted-foreground">
-                          —
-                        </div>
-                      )}
+        <div>
+          {(categories ?? []).length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              {categories!.map((c) => {
+                const active = categoryFilter.includes(c.id);
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleCategoryFilter(c.id)}
+                    className={`rounded-sm border px-3 py-1 text-xs uppercase tracking-[0.12em] transition-colors ${active
+                      ? "border-gold/50 bg-gold/10 text-gold"
+                      : "border-border bg-secondary text-muted-foreground hover:text-foreground"
+                      }`}
+                  >
+                    {c.name}
+                  </button>
+                );
+              })}
 
-                      <div className="min-w-0">
-                        <div className="truncate">{product.name}</div>
-
-                        <span className="block text-xs text-muted-foreground">
-                          {product.productCode}
-                        </span>
-
-                        {product.productImages?.length > 0 && (
-                          <span className="block text-[10px] text-muted-foreground">
-                            {product.productImages.length}{" "}
-                            {product.productImages.length === 1 ? "photo" : "photos"}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-left text-muted-foreground">
-                    {product.category?.name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {formatCurrency(Number(product.price))}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end">
-                      <Input
-                        type="number"
-                        min={0}
-                        defaultValue={product.stock}
-                        className="h-8 w-20 rounded-sm text-right"
-                        aria-label={`Stock for ${product.name}`}
-                        onBlur={(e) =>
-                          updateProduct.mutate({
-                            id: product.id,
-                            stock: Number(e.target.value) || 0,
-                          })
-                        }
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center">
-                      <Switch
-                        checked={product.isActive}
-                        aria-label={`Toggle ${product.name}`}
-                        onCheckedChange={(checked) =>
-                          updateProduct.mutate({
-                            id: product.id,
-                            isActive: checked,
-                          })
-                        }
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-center">
-                      <Switch
-                        checked={product.isFeatured}
-                        aria-label={`Toggle featured status for ${product.name}`}
-                        onCheckedChange={(checked) =>
-                          updateProduct.mutate({
-                            id: product.id,
-                            isFeatured: checked,
-                          })
-                        }
-                      />
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Edit ${product.name}`}
-                      onClick={() => editProduct(product)}
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Delete ${product.name}`}
-                      onClick={() => remove.mutate(product.id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {!isPending && (products ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
-                    No products yet.
-                  </td>
-                </tr>
+              {categoryFilter.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setCategoryFilter([])}
+                  className="text-xs uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
               )}
-            </tbody>
-          </table>
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded-sm border border-border">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[25%]" />
+                <col className="w-[15%]" />
+                <col className="w-[20%]" />
+                <col className="w-[22%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+                <col className="w-[8%]" />
+              </colgroup>
+              <thead className="bg-secondary/60 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                <tr>
+                  <th className="px-4 py-3 text-left">Product</th>
+                  <th className="px-4 py-3 text-left">Collection</th>
+                  <th className="px-4 py-3 text-right">Price</th>
+                  <th className="px-4 py-3 text-right">Stock</th>
+                  <th className="px-4 py-3 text-center">Live</th>
+                  <th className="px-4 py-3 text-center">Featured</th>
+                  <th className="px-4 py-3 text-center" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filteredProducts.map((product) => (
+                  <tr key={product.id}>
+                    <td className="px-4 py-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        {product.productImages?.[0]?.url ? (
+                          <img
+                            src={product.productImages[0].url}
+                            alt={product.name}
+                            className="h-12 w-12 shrink-0 rounded-sm border border-border object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border text-xs text-muted-foreground">
+                            —
+                          </div>
+                        )}
+
+                        <div className="min-w-0">
+                          <div className="truncate">{product.name}</div>
+
+                          <span className="block text-xs text-muted-foreground">
+                            {product.productCode}
+                          </span>
+
+                          {product.productImages?.length > 0 && (
+                            <span className="block text-[10px] text-muted-foreground">
+                              {product.productImages.length}{" "}
+                              {product.productImages.length === 1 ? "photo" : "photos"}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-left text-muted-foreground">
+                      {product.category?.name ?? "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {formatCurrency(Number(product.price))}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end">
+                        <Input
+                          type="number"
+                          min={0}
+                          defaultValue={product.stock}
+                          className="h-8 w-20 rounded-sm text-right"
+                          aria-label={`Stock for ${product.name}`}
+                          onBlur={(e) =>
+                            updateProduct.mutate({
+                              id: product.id,
+                              stock: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-center">
+                        <Switch
+                          checked={product.isActive}
+                          aria-label={`Toggle ${product.name}`}
+                          onCheckedChange={(checked) =>
+                            updateProduct.mutate({
+                              id: product.id,
+                              isActive: checked,
+                            })
+                          }
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex justify-center">
+                        <Switch
+                          checked={product.isFeatured}
+                          aria-label={`Toggle featured status for ${product.name}`}
+                          onCheckedChange={(checked) =>
+                            updateProduct.mutate({
+                              id: product.id,
+                              isFeatured: checked,
+                            })
+                          }
+                        />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Edit ${product.name}`}
+                        onClick={() => editProduct(product)}
+                      >
+                        <Pencil className="size-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Delete ${product.name}`}
+                        onClick={() => remove.mutate(product.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {!isPending && filteredProducts.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                      {categoryFilter.length > 0
+                        ? "No products match the selected collections."
+                        : "No products yet."}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="surface-panel h-fit rounded-sm p-6">
@@ -501,7 +550,7 @@ export default function AdminProducts() {
               />
 
               <p className="mt-2 text-xs text-muted-foreground">
-                Maximum 5 images, 10 MB total.
+                Maximum {PRODUCT_IMAGE_LIMITS.maxCount} images, 10 MB total.
               </p>
             </div>
             {(draft.existingImages.length > 0 || imagePreviews.length > 0) && (
