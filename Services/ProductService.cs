@@ -212,7 +212,10 @@ namespace MamtasImitationJewelleryBE.Services
             // below never fail on a null collection.
             var images = request.Images ?? new List<IFormFile>();
 
-            ValidateProductImages(images, maxCount: 5, maxTotalSize: 10 * 1024 * 1024);
+            if (images.Count > 3)
+                throw new ArgumentException("A maximum of 3 images are allowed.");
+
+            ValidateProductImages(images, maxTotalSize: 10 * 1024 * 1024);
 
             var productCode = GenerateNextProductCode(category);
 
@@ -365,10 +368,10 @@ namespace MamtasImitationJewelleryBE.Services
                     .Select(image => image.Id)
                     .ToHashSet();
 
-                if (retainedImageIds.Count + images.Count > 5)
-                    throw new ArgumentException("A maximum of 5 images are allowed.");
+                if (retainedImageIds.Count + images.Count > 3)
+                    throw new ArgumentException("A maximum of 3 images are allowed.");
 
-                ValidateProductImages(images, maxCount: images.Count, maxTotalSize: 10 * 1024 * 1024);
+                ValidateProductImages(images, maxTotalSize: 10 * 1024 * 1024);
 
                 var removedImages = product.ProductImages
                     .Where(image => !retainedImageIds.Contains(image.Id))
@@ -563,11 +566,8 @@ namespace MamtasImitationJewelleryBE.Services
                 .ToListAsync();
         }
 
-        private static void ValidateProductImages(IReadOnlyCollection<IFormFile> images, int maxCount, long maxTotalSize)
+        private static void ValidateProductImages(IReadOnlyCollection<IFormFile> images, long maxTotalSize)
         {
-            if (images.Count > maxCount)
-                throw new ArgumentException($"A maximum of {maxCount} images can be uploaded.");
-
             if (images.Sum(x => x.Length) > maxTotalSize)
                 throw new ArgumentException($"The total size of all images must not exceed {maxTotalSize / (1024 * 1024)} MB.");
 
