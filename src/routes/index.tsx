@@ -6,6 +6,7 @@ import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card
 import { CategoryRail } from "@/components/site/CategoryCarousel";
 import { Button } from "@/components/ui/button";
 import { productsQuery } from "@/lib/catalog";
+import AnnouncementBanner from "@/components/site/AnnouncementBanner";
 
 const promises = [
   {
@@ -39,34 +40,36 @@ export default function HomePage() {
           fetchPriority="high"
           className="absolute inset-0 size-full object-cover"
         />
+
         <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/10 dark:from-background dark:via-background/90 dark:to-background/30" />
-        <div className="relative mx-auto flex min-h-[74vh] max-w-7xl items-center px-4 py-20 sm:px-6 lg:px-8">
-          <div className="max-w-xl animate-rise">
-            <p className="eyebrow">Est. 1984 · Visakhapatnam</p>
-            <h1 className="mt-5 font-display text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
-              Jewellery made to be
-              <span className="italic text-gold"> inherited</span>
-            </h1>
-            <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-              Hand-finished gold and diamond pieces, one at a time. Choose what you love, send us a
-              request, and we will personally confirm every detail before anything is paid.
-            </p>
-            <div className="mt-10 flex flex-wrap gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]"
-              >
-                <Link to="/shop">Explore the collection</Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]"
-              >
-                <Link to="/categories">Browse collections</Link>
-              </Button>
+
+        <div className="relative flex min-h-[74vh] flex-col">
+          <AnnouncementBanner widthClassName="max-w-[70%]" />
+
+          <div className="mx-auto flex w-full max-w-7xl flex-1 items-center px-4 py-12 sm:px-6 lg:px-8">
+            <div className="max-w-xl animate-rise">
+              <p className="eyebrow">Est. 1984 · Visakhapatnam</p>
+              <h1 className="mt-5 font-display text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
+                Jewellery made to be
+                <span className="italic text-gold"> inherited</span>
+              </h1>
+              <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
+                Hand-finished gold and diamond pieces, one at a time. Choose what you love, send us a
+                request, and we will personally confirm every detail before anything is paid.
+              </p>
+              <div className="mt-10 flex flex-wrap gap-3">
+                <Button asChild size="lg" className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]">
+                  <Link to="/shop">Explore the collection</Link>
+                </Button>
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]"
+                >
+                  <Link to="/categories">Browse collections</Link>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
