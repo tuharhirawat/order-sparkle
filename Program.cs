@@ -59,6 +59,7 @@ namespace MamtasImitationJewelleryBE
 
             // Infrastructure Clients
             builder.Services.AddScoped<IAuthProviderClient, SupabaseAuthClient>();
+            builder.Services.AddScoped<IStorageClient, SupabaseStorageClient>();
 
             // Http Clients
             builder.Services.AddHttpClient();

@@ -1,5 +1,6 @@
 using MamtasImitationJewelleryBE.Data;
 using MamtasImitationJewelleryBE.DTOs.Product;
+using MamtasImitationJewelleryBE.Infrastructure.Clients;
 using MamtasImitationJewelleryBE.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,10 +9,12 @@ namespace MamtasImitationJewelleryBE.Services
     public class ProductService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IStorageClient _supabaseStorage;
 
-        public ProductService(ApplicationDbContext context)
+        public ProductService(ApplicationDbContext context, IStorageClient supabaseStorage)
         {
             _context = context;
+            _supabaseStorage = supabaseStorage;
         }
 
         //Customer only methods which are only used for viewing the available data
@@ -94,7 +97,8 @@ namespace MamtasImitationJewelleryBE.Services
         public async Task<List<CategoryDto>> GetAdminCategoriesAsync()
             => await GetCategoriesInternalAsync(includeInactive: true);
 
-        public async Task<Category> CreateCategoryAsync(CreateCategoryRequestDto request, string baseUrl)
+        //public async Task<Category> CreateCategoryAsync(CreateCategoryRequestDto request, string baseUrl)
+        public async Task<Category> CreateCategoryAsync(CreateCategoryRequestDto request)
         {
             var name = request.Name.Trim();
 
@@ -139,13 +143,12 @@ namespace MamtasImitationJewelleryBE.Services
                 if (request.Image.Length > maxCategoryImageSize)
                     throw new ArgumentException("The category image must not exceed 10 MB.");
 
-                category.ImageUrl = await SaveUploadedImageAsync(request.Image, "categories", baseUrl);
+                var fileName = BuildFileName(request.Image);
+                category.ImageUrl = await _supabaseStorage.UploadFileAsync(request.Image, $"category/{fileName}");
             }
 
             _context.Categories.Add(category);
-
             await _context.SaveChangesAsync();
-
             return category;
         }
 
@@ -180,9 +183,7 @@ namespace MamtasImitationJewelleryBE.Services
             return true;
         }
 
-        public async Task<ProductResponseDto> CreateProductAsync(
-            CreateProductRequestDto request,
-            string baseUrl)
+        public async Task<ProductResponseDto> CreateProductAsync(CreateProductRequestDto request)
         {
             var name = request.Name.Trim();
 
@@ -260,8 +261,9 @@ namespace MamtasImitationJewelleryBE.Services
             var imagePosition = 0;
 
             foreach (var image in images)
-            {                
-                var imageUrl = await SaveUploadedImageAsync(image, "products", baseUrl);
+            {
+                var fileName = BuildFileName(image);
+                var imageUrl = await _supabaseStorage.UploadFileAsync(image, $"product/{product.Id}/{fileName}");
 
                 _context.ProductImages.Add(new ProductImage
                 {
@@ -293,8 +295,7 @@ namespace MamtasImitationJewelleryBE.Services
 
         public async Task<ProductResponseDto?> UpdateProductAsync(
             Guid id,
-            UpdateProductRequestDto request,
-            string baseUrl)
+            UpdateProductRequestDto request)
         {
             var product = await _context.Products
                 .Include(x => x.ProductImages)
@@ -375,7 +376,7 @@ namespace MamtasImitationJewelleryBE.Services
 
                 foreach (var image in removedImages)
                 {
-                    DeleteProductImageFile(image.Url);
+                    await _supabaseStorage.DeleteFileAsync(image.Url);
                     _context.ProductImages.Remove(image);
                 }
 
@@ -389,7 +390,8 @@ namespace MamtasImitationJewelleryBE.Services
 
                 foreach (var image in images)
                 {
-                    var imageUrl = await SaveUploadedImageAsync(image, "products", baseUrl);
+                    var fileName = BuildFileName(image);
+                    var imageUrl = await _supabaseStorage.UploadFileAsync(image, $"product/{product.Id}/{fileName}");
 
                     _context.ProductImages.Add(new ProductImage
                     {
@@ -420,13 +422,13 @@ namespace MamtasImitationJewelleryBE.Services
                 .Include(x => x.ProductVariants)
                 .FirstOrDefaultAsync(x => x.Id == id);
 
-            if (product == null)
-                return false;
+            if (product == null) return false;
+
+            foreach (var image in product.ProductImages)
+                await _supabaseStorage.DeleteFileAsync(image.Url);
 
             _context.Products.Remove(product);
-
             await _context.SaveChangesAsync();
-
             return true;
         }
 
@@ -576,20 +578,6 @@ namespace MamtasImitationJewelleryBE.Services
             }
         }
 
-        private static async Task<string> SaveUploadedImageAsync(IFormFile image, string subfolder, string baseUrl)
-        {
-            var extension = Path.GetExtension(image.FileName).ToLowerInvariant();
-            var fileName = $"{Guid.NewGuid():N}{extension}";
-            var relativePath = Path.Combine("uploads", subfolder, fileName);
-            var fullPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativePath);
-
-            Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
-            await using var stream = new FileStream(fullPath, FileMode.Create);
-            await image.CopyToAsync(stream);
-
-            return $"{baseUrl}/{relativePath.Replace("\\", "/")}";
-        }
-
         private IQueryable<Product> BuildProductQuery(bool includeInactive, bool includeVariants = true)
         {
             var query = _context.Products
@@ -666,17 +654,10 @@ namespace MamtasImitationJewelleryBE.Services
             return letters.Length > 0 ? letters : "?";
         }
 
-        private static void DeleteProductImageFile(string imageUrl)
+        private static string BuildFileName(IFormFile file)
         {
-            if (!Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
-                return;
-
-            var relativePath = uri.AbsolutePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar);
-            var uploadsRoot = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads"));
-            var fullPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", relativePath));
-
-            if (fullPath.StartsWith(uploadsRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase) && File.Exists(fullPath))
-                File.Delete(fullPath);
+            var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+            return $"{Guid.NewGuid():N}{extension}";
         }
     }
 }

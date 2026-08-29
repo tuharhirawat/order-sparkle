@@ -83,8 +83,7 @@ namespace MamtasImitationJewelleryBE.Controllers
 
             try
             {
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                var category = await _productService.CreateCategoryAsync(request, baseUrl);
+                var category = await _productService.CreateCategoryAsync(request);
 
                 return Ok(category);
             }
@@ -160,12 +159,7 @@ namespace MamtasImitationJewelleryBE.Controllers
 
             try
             {
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-
-                var product = await _productService.CreateProductAsync(
-                    request,
-                    baseUrl);
-
+                var product = await _productService.CreateProductAsync(request);
                 return Ok(product);
             }
             catch (ArgumentException ex)
@@ -207,8 +201,7 @@ namespace MamtasImitationJewelleryBE.Controllers
 
             try
             {
-                var baseUrl = $"{Request.Scheme}://{Request.Host}";
-                var product = await _productService.UpdateProductAsync(id, request, baseUrl);
+                var product = await _productService.UpdateProductAsync(id, request);
 
                 if (product == null)
                 {
