@@ -8,8 +8,6 @@ export const ORDER_STATUSES: OrderStatus[] = [
   "PendingAcknowledgement",
   "OrderAcknowledged",
   "OrderConfirmed",
-  "ReadyForShipment",
-  "Completed",
   "Cancelled",
   "Refunded",
 ];
@@ -20,6 +18,7 @@ export interface AdminOrderItem {
   sku: string | null;
   variantLabel: string | null;
   quantity: number;
+  originalQuantity: number | null;
   unitPrice: number;
   lineTotal: number;
   imageUrl: string | null;
@@ -73,7 +72,6 @@ export interface AdminOrderDetails extends AdminOrder {
   payments: OrderPayment[];
 }
 
-
 export interface AdminOrderSummary {
   id: string;
   orderNumber: string;
@@ -94,8 +92,6 @@ export const STATUS_LABELS: Record<OrderStatus, string> = {
   PendingAcknowledgement: "Pending Acknowledgement",
   OrderAcknowledged: "Acknowledged",
   OrderConfirmed: "Confirmed",
-  ReadyForShipment: "Ready for Shipment",
-  Completed: "Completed",
   Cancelled: "Cancelled",
   Refunded: "Refunded",
 };
@@ -146,6 +142,14 @@ export const adminCustomersQuery = () =>
     },
   });
 
+export async function adjustOrderItems(
+  id: string,
+  items: { orderItemId: string; quantity: number }[]
+): Promise<AdminOrderDetails> {
+  const response = await api.post<AdminOrderDetails>(`/Order/${id}/items/adjust`, { items });
+  return response.data;
+}
+
 export async function acknowledgeOrder(
   id: string
 ): Promise<AdminOrderDetails> {
@@ -156,23 +160,9 @@ export async function acknowledgeOrder(
   return response.data;
 }
 
-export async function addOrderPayment(
-  id: string,
-  amount: number
-): Promise<AdminOrderDetails> {
+export async function markOrderPaid(id: string): Promise<AdminOrderDetails> {
   const response = await api.post<AdminOrderDetails>(
-    `/Order/${id}/payments`,
-    { amount }
-  );
-
-  return response.data;
-}
-
-export async function markOrderDelivered(
-  id: string
-): Promise<AdminOrderDetails> {
-  const response = await api.post<AdminOrderDetails>(
-    `/Order/${id}/mark-delivered`
+    `/Order/${id}/mark-paid`
   );
 
   return response.data;
@@ -232,9 +222,6 @@ export const adminCategoriesQuery = () =>
 
 export function statusTone(status: OrderStatus): string {
   switch (status) {
-    case "Completed":
-      return "border-gold/50 bg-gold/10 text-gold";
-
     case "Refunded":
     case "Cancelled":
       return "border-destructive/40 bg-destructive/10 text-destructive";
@@ -246,9 +233,6 @@ export function statusTone(status: OrderStatus): string {
       return "border-border bg-secondary text-foreground";
 
     case "OrderConfirmed":
-      return "border-gold/50 bg-gold/10 text-gold";
-
-    case "ReadyForShipment":
       return "border-gold/50 bg-gold/10 text-gold";
 
     default:
@@ -268,9 +252,6 @@ export function paymentStatusTone(
 
     case "Pending":
       return "border-border bg-secondary text-muted-foreground";
-
-    case "PartiallyPaid":
-      return "border-gold/50 bg-gold/10 text-gold";
 
     default:
       // null = payment phase hasn't started yet

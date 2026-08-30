@@ -28,7 +28,6 @@ export default function OrderConfirmationPage() {
         orderNumber: order.orderNumber,
         customerName: order.customerName,
         items: order.items,
-        total: order.total,
         city: order.city,
         state: order.state,
         pincode: order.pincode,

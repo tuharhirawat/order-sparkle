@@ -15,6 +15,8 @@ import { createOrderRequest } from "@/lib/user-data";
 import { CreateOrderResponse as OrderConfirmation } from "@/Types/orderTypes";
 import { saveLastOrder } from "@/lib/last-order";
 import { useAuth } from "@/hooks/use-auth";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
+import dictionary from "@/Constants/dictionary";
 
 interface FormState {
   fullName: string;
@@ -72,10 +74,13 @@ export default function CheckoutPage() {
       email: prev.email || account.email || "",
     }));
   }, [account]);
+
   const idempotencyKey = useRef<string>("");
   if (!idempotencyKey.current && typeof crypto !== "undefined") {
     idempotencyKey.current = crypto.randomUUID();
   }
+
+  const waWindowRef = useRef<Window | null>(null);
 
   const payloadItems = useMemo(
     () =>
@@ -90,26 +95,46 @@ export default function CheckoutPage() {
   const mutation = useMutation({
     mutationFn: (): Promise<OrderConfirmation> =>
       createOrderRequest({
-          idempotencyKey: idempotencyKey.current,
-          customer: {
-            fullName: form.fullName.trim(),
-            phone: form.phone.trim(),
-            email: form.email.trim(),
-            line1: form.line1.trim(),
-            city: form.city.trim(),
-            state: form.state.trim(),
-            pincode: form.pincode.trim(),
-            note: form.note.trim(),
-          },
-          items: payloadItems,
+        idempotencyKey: idempotencyKey.current,
+        customer: {
+          fullName: form.fullName.trim(),
+          phone: form.phone.trim(),
+          email: form.email.trim(),
+          line1: form.line1.trim(),
+          city: form.city.trim(),
+          state: form.state.trim(),
+          pincode: form.pincode.trim(),
+          note: form.note.trim(),
+        },
+        items: payloadItems,
       }),
     onSuccess: (confirmation) => {
-      // Database first: the order exists before we hand off to WhatsApp.
       saveLastOrder(confirmation);
       clear();
+
+      const whatsappHref = buildWhatsAppUrl({
+        storeName: dictionary.siteFullName,
+        whatsappNumber: dictionary.whatsappNumber ?? "",
+        orderNumber: confirmation.orderNumber,
+        customerName: confirmation.customerName,
+        items: confirmation.items,
+        city: confirmation.city,
+        state: confirmation.state,
+        pincode: confirmation.pincode,
+        addressLine: confirmation.addressLine,
+        note: confirmation.note,
+      });
+
+      if (waWindowRef.current) {
+        waWindowRef.current.location.href = whatsappHref;
+      } else {
+        window.open(whatsappHref, "_blank", "noopener,noreferrer");
+      }
+
       void navigate(`/order/${confirmation.orderNumber}`);
     },
     onError: (error: Error) => {
+      waWindowRef.current?.close();
       toast.error("We couldn't place your request", { description: error.message });
     },
   });
@@ -127,6 +152,7 @@ export default function CheckoutPage() {
       toast.error("Please check the highlighted fields");
       return;
     }
+    waWindowRef.current = window.open("", "_blank");
     mutation.mutate();
   };
 
@@ -302,6 +328,11 @@ export default function CheckoutPage() {
             </div>
             <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
               Final total, making charges and delivery are confirmed by our studio before payment.
+            </p>
+            <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+              Refund policy: please record an unboxing video while opening your parcel. it's required
+              for any refund request. Refunds are only accepted for items that arrive damaged, and must
+              be requested within 48 hours of delivery.
             </p>
           </aside>
         </div>

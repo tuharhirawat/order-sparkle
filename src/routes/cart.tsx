@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/lib/cart";
-import dictionary from "@/Constants/dictionary";
 
 export default function CartPage() {
   const { items, subtotal, setQuantity, removeItem, hydrated } = useCart();
@@ -132,6 +131,11 @@ export default function CartPage() {
               <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
                 No payment is taken online. We record your request, give you an order ID, and
                 confirm everything with you on WhatsApp.
+              </p>
+              <p className="mt-4 text-xs leading-relaxed text-muted-foreground">
+                Refund policy: please record an unboxing video while opening your parcel. it's required
+                for any refund request. Refunds are only accepted for items that arrive damaged, and must
+                be requested within 48 hours of delivery.
               </p>
               <Link
                 to="/shop"

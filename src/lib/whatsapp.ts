@@ -10,8 +10,11 @@ export interface WhatsAppOrderPayload {
   whatsappNumber: string;
   orderNumber: string;
   customerName: string;
-  items: { name: string; variantLabel?: string | null; quantity: number; unitPrice: number; lineTotal: number }[];
-  total: number;
+  items: {
+    name: string;
+    variantLabel?: string | null;
+    quantity: number;
+  }[];
   city: string;
   state: string;
   pincode: string;
@@ -29,11 +32,9 @@ export function buildWhatsAppMessage(payload: WhatsAppOrderPayload): string {
   payload.items.forEach((item, index) => {
     const variant = item.variantLabel ? ` (${item.variantLabel})` : "";
     lines.push(
-      `${index + 1}. ${item.name}${variant} × ${item.quantity} — ${formatCurrency(item.unitPrice)} = ${formatCurrency(item.lineTotal)}`,
+      `${index + 1}. ${item.name}${variant} × ${item.quantity}`,
     );
   });
-  lines.push("");
-  lines.push(`*Total: ${formatCurrency(payload.total)}*`);
   lines.push("");
   lines.push("*Deliver to*");
   lines.push(payload.addressLine);

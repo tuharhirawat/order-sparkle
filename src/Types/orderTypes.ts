@@ -2,14 +2,11 @@ export type OrderStatus =
   | "PendingAcknowledgement"
   | "OrderAcknowledged"
   | "OrderConfirmed"
-  | "ReadyForShipment"
-  | "Completed"
   | "Cancelled"
   | "Refunded";
 
 export type PaymentStatus =
   | "Pending"
-  | "PartiallyPaid"
   | "Paid"
   | "Refunded";
 
@@ -67,6 +64,7 @@ export interface MyOrderRequestsResponse {
     name: string;
     variantLabel: string | null;
     quantity: number;
+    originalQuantity: number | null;
     unitPrice: number;
     lineTotal: number;
     imageUrl: string | null;

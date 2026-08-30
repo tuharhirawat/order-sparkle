@@ -6,14 +6,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/format";
+import { X } from "lucide-react";
+import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
 import {
   adminOrderDetailsQuery,
   acknowledgeOrder,
-  addOrderPayment,
-  markOrderDelivered,
+  markOrderPaid,
   cancelOrder,
   refundOrder,
   addOrderNote,
+  adjustOrderItems
 } from "@/lib/admin-data";
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -62,26 +65,25 @@ function Section({
   );
 }
 
+const STATUS_BADGE_CLASSES = {
+  default: "border-border bg-secondary text-foreground",
+  success: "border-gold/50 bg-gold/10 text-gold",
+  warning: "border-gold/40 bg-gold/5 text-gold",
+  danger: "border-destructive/40 bg-destructive/10 text-destructive",
+} as const;
+
 function StatusBadge({ children, variant = "default" }: {
   children: React.ReactNode;
-  variant?: "default" | "success" | "warning" | "danger";
+  variant?: keyof typeof STATUS_BADGE_CLASSES;
 }) {
-  const classes = {
-    default: "border-border bg-secondary text-foreground",
-    success: "border-gold/50 bg-gold/10 text-gold",
-    warning: "border-gold/40 bg-gold/5 text-gold",
-    danger: "border-destructive/40 bg-destructive/10 text-destructive",
-  };
-
   return (
     <span
-      className={`inline-flex rounded-sm border px-3 py-1.5 text-xs font-medium ${classes[variant]}`}
+      className={`inline-flex rounded-sm border px-3 py-1.5 text-xs font-medium ${STATUS_BADGE_CLASSES[variant]}`}
     >
       {children}
     </span>
   );
 }
-
 
 export default function AdminOrderDetails() {
   const { id, category } = useParams<{ id: string; category: string }>();
@@ -93,15 +95,35 @@ export default function AdminOrderDetails() {
 
   const [note, setNote] = useState("");
   const [noteFormOpen, setNoteFormOpen] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState("");
-  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
-
+  const [markPaidOpen, setMarkPaidOpen] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [quantities, setQuantities] = useState<Record<string, number>>({});
 
   const invalidate = () => {
     void queryClient.invalidateQueries({
       queryKey: ["admin", "orders"],
     });
   };
+
+  const adjustMutation = useMutation({
+    mutationFn: () => adjustOrderItems(
+      id!,
+      order!.items
+        .filter((i) => quantities[i.id] !== undefined && quantities[i.id] !== i.quantity)
+        .map((i) => ({ orderItemId: i.id, quantity: quantities[i.id]! }))
+    ),
+
+    onSuccess: () => {
+      toast.success("Quantities updated");
+      setQuantities({});
+      invalidate();
+    },
+
+    onError: (e: any) =>
+      toast.error("Could not update quantities", { description: e?.response?.data?.message ?? e.message }),
+  });
 
   const acknowledgeMutation = useMutation({
     mutationFn: () => acknowledgeOrder(id!),
@@ -118,38 +140,19 @@ export default function AdminOrderDetails() {
     },
   });
 
-  const paymentMutation = useMutation({
-    mutationFn: (amount: number) => addOrderPayment(id!, amount),
+  const markPaidMutation = useMutation({
+    mutationFn: () => markOrderPaid(id!),
 
     onSuccess: () => {
-      toast.success("Payment recorded");
-
-      setPaymentAmount("");
-      setPaymentFormOpen(false);
+      toast.success("Order marked as paid");
 
       invalidate();
     },
 
-    onError: (error: any) => {
-      toast.error("Could not record payment", {
-        description: error?.response?.data?.message ?? error.message,
-      });
-    },
-  });
-
-  const deliveredMutation = useMutation({
-    mutationFn: () => markOrderDelivered(id!),
-
-    onSuccess: () => {
-      toast.success("Order marked as delivered");
-      invalidate();
-    },
-
-    onError: (error: any) => {
-      toast.error("Could not mark order as delivered", {
-        description: error?.response?.data?.message ?? error.message,
-      });
-    },
+    onError: (e: any) =>
+      toast.error("Could not mark as paid", {
+        description: e?.response?.data?.message ?? e.message
+      }),
   });
 
   const cancelMutation = useMutation({
@@ -205,30 +208,11 @@ export default function AdminOrderDetails() {
 
   const busy =
     acknowledgeMutation.isPending ||
-    paymentMutation.isPending ||
-    deliveredMutation.isPending ||
+    adjustMutation.isPending ||
+    markPaidMutation.isPending ||
     cancelMutation.isPending ||
     refundMutation.isPending ||
     noteMutation.isPending;
-
-  const handleAddPayment = () => {
-    const amount = Number(paymentAmount);
-
-    if (!Number.isFinite(amount) || amount <= 0) {
-      toast.error("Enter a valid payment amount.");
-      return;
-    }
-
-    if (amount > order!.amountPending) {
-      toast.error(
-        `Payment cannot exceed ${formatCurrency(order!.amountPending)}.`
-      );
-
-      return;
-    }
-
-    paymentMutation.mutate(amount);
-  };
 
   if (isPending || !order) {
     return (
@@ -240,34 +224,21 @@ export default function AdminOrderDetails() {
   }
 
   const statusVariant =
-    order.status === "Completed"
+    order.status === "OrderConfirmed"
       ? "success"
-      : order.status === "Cancelled" ||
-        order.status === "Refunded"
+      : order.status === "Cancelled" || order.status === "Refunded"
         ? "danger"
-        : order.status === "OrderConfirmed" ||
-          order.status === "ReadyForShipment"
-          ? "success"
-          : "default";
+        : "default";
 
   const paymentVariant =
     order.paymentStatus === "Paid"
       ? "success"
-      : order.paymentStatus === "PartiallyPaid"
-        ? "warning"
-        : order.paymentStatus === "Refunded"
-          ? "danger"
-          : "default";
+      : order.paymentStatus === "Refunded"
+        ? "danger"
+        : "default";
 
   const canAcknowledge =
     order.status === "PendingAcknowledgement";
-
-  const canAddPayment =
-    order.status === "OrderAcknowledged" ||
-    order.status === "OrderConfirmed";
-
-  const canMarkDelivered =
-    order.status === "ReadyForShipment";
 
   const canCancel =
     order.status === "PendingAcknowledgement" ||
@@ -277,7 +248,6 @@ export default function AdminOrderDetails() {
     order.amountPaid > 0 &&
     order.status !== "Refunded" &&
     order.status !== "Cancelled";
-
 
   return (
     <div>
@@ -312,7 +282,6 @@ export default function AdminOrderDetails() {
           </h1>
         </div>
       </div>
-
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0">
@@ -383,17 +352,17 @@ export default function AdminOrderDetails() {
               />
 
               {order.paymentStatus !== "Refunded" && (
-                <>
+                order.amountPaid > 0 ? (
                   <Row
                     label="Amount Paid"
                     value={formatCurrency(order.amountPaid)}
                   />
-
+                ) : (
                   <Row
                     label="Amount Pending"
                     value={formatCurrency(order.amountPending)}
                   />
-                </>
+                )
               )}
             </div>
           </div>
@@ -404,39 +373,70 @@ export default function AdminOrderDetails() {
           >
             <ul className="space-y-3 text-sm">
               {order.items.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex justify-between gap-4"
-                >
-                  <span>
-                    {item.name}
+                <li key={item.id} className="flex items-center gap-4">
+                  {item.imageUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(item.imageUrl)}
+                      className="size-14 shrink-0 overflow-hidden rounded-sm border border-border transition-opacity hover:opacity-80"
+                    >
+                      <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
+                    </button>
+                  )}
 
-                    {item.variantLabel && (
-                      <span className="block text-xs text-muted-foreground">
-                        {item.variantLabel}
-                      </span>
+                  <div className="min-w-0 flex-1">
+                    <p>{item.name}</p>
+                    {item.variantLabel && <p className="text-xs text-muted-foreground">{item.variantLabel}</p>}
+                    <p className="text-xs text-muted-foreground">{item.sku ?? "No SKU"}</p>
+                    {item.originalQuantity != null && (
+                      <p className="text-xs text-gold">
+                        {item.quantity === 0
+                          ? `Not available (was ${item.originalQuantity})`
+                          : `Adjusted from ${item.originalQuantity}`}
+                      </p>
                     )}
+                  </div>
 
-                    <span className="block text-xs text-muted-foreground">
-                      {item.sku ?? "No SKU"} · Qty {item.quantity}
+                  <div className="flex shrink-0 items-center gap-4">
+                    {canAcknowledge ? (
+                      <input
+                        type="number"
+                        min={0}
+                        max={item.originalQuantity ?? item.quantity}
+                        value={quantities[item.id] ?? item.quantity}
+                        onChange={(e) => {
+                          const cap = item.originalQuantity ?? item.quantity;
+                          const next = Math.min(cap, Math.max(0, Number(e.target.value)));
+                          setQuantities((prev) => ({ ...prev, [item.id]: next }));
+                        }}
+                        className="h-8 w-16 rounded-sm border border-border bg-background px-2 text-sm"
+                      />
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Qty {item.quantity}</span>
+                    )}
+                    <span className={`w-20 text-right ${item.quantity === 0 ? "text-muted-foreground line-through" : ""}`}>
+                      {formatCurrency(item.lineTotal)}
                     </span>
-                  </span>
-
-                  <span>
-                    {formatCurrency(item.lineTotal)}
-                  </span>
+                  </div>
                 </li>
               ))}
             </ul>
 
-            <div className="mt-4 flex justify-between border-t border-border pt-3 text-sm font-medium">
-              <span>
-                Total
-              </span>
+            {canAcknowledge && order.items.some((i) => quantities[i.id] !== undefined && quantities[i.id] !== i.quantity) && (
+              <Button
+                size="sm"
+                className="mt-3 rounded-sm"
+                disabled={adjustMutation.isPending}
+                onClick={() => adjustMutation.mutate()}
+              >
+                Save Quantity Changes
+              </Button>
+            )}
 
-              <span>
-                {formatCurrency(order.total)}
-              </span>
+            <div className="mt-4 flex justify-between border-t border-border pt-3 text-sm font-medium">
+              <span>Total</span>
+
+              <span>{formatCurrency(order.total)}</span>
             </div>
           </Section>
 
@@ -547,148 +547,59 @@ export default function AdminOrderDetails() {
 
         <aside className="lg:sticky lg:top-6 lg:self-start">
           <div className="space-y-4">
-            <div className="rounded-sm border border-border p-5">
-              <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-                Order Actions
-              </p>
+            {order.status !== "Cancelled" && order.status !== "Refunded" && (
+              <div className="rounded-sm border border-border p-5">
+                <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
+                  Order Actions
+                </p>
 
-              <div className="mt-4 space-y-2">
-                {canAcknowledge && (
-                  <Button
-                    className="w-full rounded-sm bg-gold text-background hover:bg-gold/90"
-                    disabled={busy}
-                    onClick={() =>
-                      acknowledgeMutation.mutate()
-                    }
-                  >
-                    Acknowledge Order
-                  </Button>
-                )}
-
-                {canAddPayment &&
-                  order.paymentStatus !== "Paid" &&
-                  order.paymentStatus !== "Refunded" && (
+                <div className="mt-4 space-y-2">
+                  {canAcknowledge && (
                     <Button
-                      className="w-full rounded-sm"
+                      className="w-full rounded-sm bg-gold text-background hover:bg-gold/90"
                       disabled={busy}
                       onClick={() =>
-                        setPaymentFormOpen((open) => !open)
+                        acknowledgeMutation.mutate()
                       }
                     >
-                      Add Payment
+                      Acknowledge Order
                     </Button>
                   )}
 
-                {canMarkDelivered && (
-                  <Button
-                    className="w-full rounded-sm bg-gold text-background hover:bg-gold/90"
-                    disabled={busy}
-                    onClick={() =>
-                      deliveredMutation.mutate()
-                    }
-                  >
-                    Mark as Delivered
-                  </Button>
-                )}
-
-                {canCancel && (
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-sm"
-                    disabled={busy}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Are you sure you want to cancel this order?"
-                        )
-                      ) {
-                        cancelMutation.mutate();
-                      }
-                    }}
-                  >
-                    Cancel Order
-                  </Button>
-                )}
-
-                {canRefund && (
-                  <Button
-                    variant="outline"
-                    className="w-full rounded-sm"
-                    disabled={busy}
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          `Refund ${formatCurrency(
-                            order.amountPaid
-                          )} for this order?`
-                        )
-                      ) {
-                        refundMutation.mutate();
-                      }
-                    }}
-                  >
-                    Initiate Refund
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {canAddPayment &&
-              order.paymentStatus !== "Paid" &&
-              order.paymentStatus !== "Refunded" &&
-              paymentFormOpen && (
-                <div className="rounded-sm border border-border p-5">
-                  <div>
-                    <p className="text-sm font-medium">
-                      Record Payment
-                    </p>
-
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Amount pending:{" "}
-                      {formatCurrency(order.amountPending)}
-                    </p>
-                  </div>
-
-                  <div className="mt-4">
-                    <label
-                      htmlFor="payment-amount"
-                      className="text-xs uppercase tracking-[0.16em] text-muted-foreground"
+                  {order.status === "OrderAcknowledged" && (
+                    <Button
+                      className="w-full rounded-sm bg-gold text-background hover:bg-gold/90"
+                      disabled={busy}
+                      onClick={() => setMarkPaidOpen(true)}
                     >
-                      Amount Paid
-                    </label>
+                      Mark as Paid
+                    </Button>
+                  )}
 
-                    <input
-                      id="payment-amount"
-                      type="number"
-                      min="0.01"
-                      max={order.amountPending}
-                      step="0.01"
-                      value={paymentAmount}
-                      onChange={(e) =>
-                        setPaymentAmount(e.target.value)
-                      }
-                      className="mt-2 h-10 w-full rounded-sm border border-border bg-background px-3 text-sm outline-none focus:border-gold"
-                      placeholder="Enter amount"
-                    />
-                  </div>
+                  {canCancel && (
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-sm"
+                      disabled={busy}
+                      onClick={() => setCancelOpen(true)}
+                    >
+                      Cancel Order
+                    </Button>
+                  )}
 
-                  <Button
-                    className="mt-3 w-full rounded-sm"
-                    disabled={
-                      paymentMutation.isPending ||
-                      !paymentAmount
-                    }
-                    onClick={handleAddPayment}
-                  >
-                    Record Payment
-                  </Button>
-
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Maximum:{" "}
-                    {formatCurrency(order.amountPending)}
-                  </p>
+                  {canRefund && (
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-sm"
+                      disabled={busy}
+                      onClick={() => setRefundOpen(true)}
+                    >
+                      Initiate Refund
+                    </Button>
+                  )}
                 </div>
-              )}
+              </div>
+            )}
 
             <div className="rounded-sm border border-border p-5">
               <div className="flex items-center justify-between gap-3">
@@ -759,6 +670,45 @@ export default function AdminOrderDetails() {
           </div>
         </aside>
       </div>
+
+      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
+        <DialogContent className="max-w-none w-screen h-screen border-none bg-black/90 p-0 flex items-center justify-center [&>button]:hidden">
+          {previewImage && (
+            <img src={previewImage} alt="" className="max-h-[90vh] max-w-[90vw] object-contain" />
+          )}
+          <DialogClose className="absolute right-6 top-6 rounded-full bg-background/10 p-2 text-white transition-colors hover:bg-background/20">
+            <X className="size-5" />
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+
+      <ConfirmActionDialog
+        open={cancelOpen}
+        onOpenChange={setCancelOpen}
+        title="Cancel this order?"
+        description={`This will cancel ${order.orderNumber}. This action cannot be undone.`}
+        cancelLabel="Keep order"
+        confirmLabel="Yes, cancel order"
+        onConfirm={() => cancelMutation.mutate()}
+      />
+
+      <ConfirmActionDialog
+        open={refundOpen}
+        onOpenChange={setRefundOpen}
+        title="Refund this order?"
+        description={`This will refund ${formatCurrency(order.amountPaid)} for ${order.orderNumber}.`}
+        confirmLabel="Yes, initiate refund"
+        onConfirm={() => refundMutation.mutate()}
+      />
+
+      <ConfirmActionDialog
+        open={markPaidOpen}
+        onOpenChange={setMarkPaidOpen}
+        title="Mark order as paid?"
+        description={`This confirms the full amount of ${formatCurrency(order.amountPending)} has been received for ${order.orderNumber}. The order will move to Confirmed.`}
+        confirmLabel="Yes, mark as paid"
+        onConfirm={() => markPaidMutation.mutate()}
+      />
     </div>
   );
 }
