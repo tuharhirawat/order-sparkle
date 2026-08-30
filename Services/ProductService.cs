@@ -3,6 +3,7 @@ using MamtasImitationJewelleryBE.DTOs.Product;
 using MamtasImitationJewelleryBE.Infrastructure.Clients;
 using MamtasImitationJewelleryBE.Models;
 using Microsoft.EntityFrameworkCore;
+using MamtasImitationJewelleryBE.Mappers;
 
 namespace MamtasImitationJewelleryBE.Services
 {
@@ -89,7 +90,7 @@ namespace MamtasImitationJewelleryBE.Services
 
             var products = await query.ToListAsync();
 
-            return products.Select(MapProductSummary).ToList();
+            return products.Select(ProductMapper.MapProductSummary).ToList();
         }
 
         // Admin only methods
@@ -97,7 +98,6 @@ namespace MamtasImitationJewelleryBE.Services
         public async Task<List<CategoryDto>> GetAdminCategoriesAsync()
             => await GetCategoriesInternalAsync(includeInactive: true);
 
-        //public async Task<Category> CreateCategoryAsync(CreateCategoryRequestDto request, string baseUrl)
         public async Task<Category> CreateCategoryAsync(CreateCategoryRequestDto request)
         {
             var name = request.Name.Trim();
@@ -284,7 +284,7 @@ namespace MamtasImitationJewelleryBE.Services
             var createdProduct = await BuildProductQuery(includeInactive: true)
                 .FirstAsync(x => x.Id == product.Id);
 
-            return MapProduct(createdProduct);
+            return ProductMapper.MapProduct(createdProduct);
         }
 
         public async Task<List<ProductResponseDto>> GetAdminProductsAsync()
@@ -293,7 +293,7 @@ namespace MamtasImitationJewelleryBE.Services
                 .OrderByDescending(x => x.CreatedAt)
                 .ToListAsync();
 
-            return products.Select(MapProduct).ToList();
+            return products.Select(ProductMapper.MapProduct).ToList();
         }
 
         public async Task<ProductResponseDto?> UpdateProductAsync(
@@ -415,7 +415,7 @@ namespace MamtasImitationJewelleryBE.Services
             var updatedProduct = await BuildProductQuery(includeInactive: true)
                 .FirstAsync(x => x.Id == id);
 
-            return MapProduct(updatedProduct);
+            return ProductMapper.MapProduct(updatedProduct);
         }
 
         public async Task<bool> DeleteProductAsync(Guid id)
@@ -442,7 +442,7 @@ namespace MamtasImitationJewelleryBE.Services
 
             return product == null
                 ? null
-                : MapProduct(product);
+                : ProductMapper.MapProduct(product);
         }
 
         public async Task<List<CategoryNamesDto>> GetAllCategoryNamesAsync()
@@ -453,91 +453,6 @@ namespace MamtasImitationJewelleryBE.Services
                 .OrderBy(x => x.Position)
                 .Select(x => new CategoryNamesDto { Id = x.Id, Name = x.Name })
                 .ToListAsync();
-        }
-
-        // Mappers 
-
-        private static ProductResponseDto MapProduct(Product product)
-        {
-            return new ProductResponseDto
-            {
-                Id = product.Id,
-                ProductCode = product.ProductCode,
-                Name = product.Name,
-                UrlName = product.UrlName,
-                Description = product.Description,
-                Price = product.Price,
-                CompareAtPrice = product.CompareAtPrice,
-                Material = product.Material,
-                Details = product.Details,
-                Stock = product.Stock,
-                TrackStock = product.TrackStock,
-                IsFeatured = product.IsFeatured,
-                IsNew = product.CreatedAt >= DateTime.UtcNow.AddHours(-48),
-                IsActive = product.IsActive,
-                CreatedAt = product.CreatedAt,
-                UpdatedAt = product.UpdatedAt,
-
-                Category = MapCategoryResponse(product.Category),
-
-                ProductImages = product.ProductImages
-                    .OrderBy(x => x.Position)
-                    .Select(x => new ProductImageResponseDto
-                    {
-                        Id = x.Id,
-                        Url = x.Url,
-                        Position = x.Position
-                    })
-                    .ToList(),
-
-                ProductVariants = product.ProductVariants
-                    .OrderBy(x => x.Position)
-                    .Select(x => new ProductVariantResponseDto
-                    {
-                        Id = x.Id,
-                        Label = x.Label,
-                        VariantCode = x.VariantCode,
-                        PriceDelta = x.PriceDelta,
-                        Stock = x.Stock,
-                        IsActive = x.IsActive,
-                        Position = x.Position
-                    })
-                    .ToList()
-            };
-        }
-
-        private static ProductSummaryResponseDto MapProductSummary(Product product)
-        {
-            return new ProductSummaryResponseDto
-            {
-                Id = product.Id,
-                Name = product.Name,
-                UrlName = product.UrlName,
-                Price = product.Price,
-                CompareAtPrice = product.CompareAtPrice,
-                IsFeatured = product.IsFeatured,
-                IsNew = product.CreatedAt >= DateTime.UtcNow.AddHours(-48),
-                InStock = !product.TrackStock || product.Stock > 0,
-                ThumbnailUrl = product.ProductImages
-                    .OrderBy(x => x.Position)
-                    .Select(x => x.Url)
-                    .FirstOrDefault() ?? product.Category?.ImageUrl,
-                Category = MapCategoryResponse(product.Category)
-            };
-        }
-
-        private static CategoryResponseDto? MapCategoryResponse(Category? category)
-        {
-            if (category == null) return null;
-
-            return new CategoryResponseDto
-            {
-                Id = category.Id,
-                Name = category.Name,
-                UrlName = category.UrlName,
-                ImageUrl = category.ImageUrl,
-                Initials = category.Prefix
-            };
         }
 
         // Private helper methods
