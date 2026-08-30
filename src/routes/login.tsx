@@ -62,7 +62,6 @@ export default function LoginPage() {
   return (
     <SiteLayout>
       <section className="mx-auto flex max-w-md flex-col px-4 py-16 sm:px-6 lg:py-24">
-        <p className="eyebrow text-center">Account</p>
         <h1 className="mt-3 text-center font-display text-4xl font-normal text-foreground">Sign in</h1>
         <p className="mt-3 text-center text-sm text-muted-foreground">
           View your order requests and their current status.

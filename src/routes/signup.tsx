@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { SiteLayout } from "@/components/site/layout";
@@ -45,7 +45,12 @@ export default function SignupPage() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
+
+  // Email verification is not enabled yet, so signup goes straight to the
+  // login page instead of showing a "confirm your email" screen. Once email
+  // verification is turned back on, restore the `sent` state below and the
+  // early-return block right after it (kept commented out, not deleted).
+  {/* const [sent, setSent] = useState(false); */ }
 
   const safeRedirectTo = isSafeRedirect(redirectTo)
     ? redirectTo
@@ -75,7 +80,14 @@ export default function SignupPage() {
         password: parsed.data.password,
       });
 
-      setSent(true);
+      toast.success("Account created. Please sign in.");
+
+      void navigate(
+        safeRedirectTo ? `/login?redirectTo=${encodeURIComponent(safeRedirectTo)}` : "/login"
+      );
+
+      // Once email verification is enabled, swap the two lines above for:
+      {/* setSent(true); */ }
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ??
@@ -86,7 +98,10 @@ export default function SignupPage() {
     }
   };
 
-  if (sent) {
+  // Unused until email verification is enabled — see the `sent` state note
+  // above for how to re-activate this screen.
+
+  {/* if (sent) {
     return (
       <SiteLayout>
         <section className="mx-auto max-w-md px-4 py-20 text-center sm:px-6">
@@ -108,11 +123,11 @@ export default function SignupPage() {
       </SiteLayout>
     );
   }
+*/}
 
   return (
     <SiteLayout>
       <section className="mx-auto flex max-w-md flex-col px-4 py-16 sm:px-6 lg:py-24">
-        <p className="eyebrow text-center">Account</p>
         <h1 className="mt-3 text-center font-display text-4xl font-normal text-foreground">Create account</h1>
         <p className="mt-3 text-center text-sm text-muted-foreground">
           Save your details and follow every order request you place.

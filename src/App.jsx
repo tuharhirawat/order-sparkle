@@ -21,6 +21,7 @@ const AdminCustomers = lazy(() => import("./routes/admin.customers"));
 const AdminOrders = lazy(() => import("./routes/AdminOrders"));
 const AdminOrderDetails = lazy(() => import("./components/site/AdminOrderDetails"));
 const AdminOrdersOverview = lazy(() => import("./components/site/AdminOrdersOverview"));
+const PublicRoute = lazy(() => import("./routes/_public/PublicRoute"));
 
 function LoadingPage() {
   return <div className="min-h-screen bg-background" aria-busy="true" />;
@@ -52,8 +53,11 @@ export default function App() {
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/product/:slug" element={<ProductPage />} />
         <Route path="/cart" element={<CartPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignupPage />} />
+
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+        </Route>
 
         <Route element={<ProtectedRoute />}>
           <Route path="/order/:orderNumber" element={<OrderConfirmationPage />} />
