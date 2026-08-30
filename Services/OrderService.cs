@@ -206,196 +206,45 @@ namespace MamtasImitationJewelleryBE.Services
             return OrderMapper.MapDetails(order);
         }
 
-        public async Task<OrderDetailsResponseDto> AddOrderPaymentAsync(
-            Guid orderId,
-            decimal amount,
-            string? changedBy)
+        public async Task<OrderDetailsResponseDto> MarkOrderAsPaidAsync(Guid orderId, string? changedBy)
         {
-            if (amount <= 0)
-            {
-                throw new OrderValidationException(
-                    "Payment amount must be greater than zero.");
-            }
-
             var order = await LoadOrderWithHistoryAsync(orderId);
 
-            if (order.Status == OrderStatus.PendingAcknowledgement)
-            {
-                throw new OrderValidationException(
-                    "The order must be acknowledged before adding a payment.");
-            }
-
-            if (order.Status == OrderStatus.Cancelled)
-            {
-                throw new OrderValidationException(
-                    "Payment cannot be added to a cancelled order.");
-            }
-
-            if (order.Status == OrderStatus.Refunded)
-            {
-                throw new OrderValidationException(
-                    "Payment cannot be added to a refunded order.");
-            }
-
-            if (order.PaymentStatus == PaymentStatus.Paid)
-            {
-                throw new OrderValidationException(
-                    "This order is already fully paid.");
-            }
-
-            var amountPending = order.Total - order.AmountPaid;
-
-            if (amount > amountPending)
-            {
-                throw new OrderValidationException(
-                    $"Payment cannot exceed the pending amount of {amountPending:0.00}.");
-            }
+            if (order.Status != OrderStatus.OrderAcknowledged)
+                throw new OrderValidationException("Only acknowledged orders can be marked as paid.");
 
             var now = DateTime.UtcNow;
+            var pending = order.Total - order.AmountPaid;
 
-            var payment = new OrderPayment
+            _context.OrderPayments.Add(new OrderPayment
             {
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
-                Amount = amount,
+                Amount = pending,
                 CreatedAt = now
-            };
+            });
 
-            _context.OrderPayments.Add(payment);
-
-            order.AmountPaid = Math.Round(
-                order.AmountPaid + amount,
-                2);
-
-            order.UpdatedAt = now;
-
-            var paymentPercentage = order.Total == 0
-                ? 0
-                : (order.AmountPaid / order.Total) * 100m;
-
-            if (order.AmountPaid >= order.Total)
-            {
-                order.AmountPaid = order.Total;
-
-                if (order.PaymentStatus != PaymentStatus.Paid)
-                {
-                    AddTransition(
-                        order,
-                        "PaymentStatus",
-                        order.PaymentStatus?.ToString() ?? "None",
-                        PaymentStatus.Paid.ToString(),
-                        changedBy,
-                        now);
-
-                    order.PaymentStatus = PaymentStatus.Paid;
-                }
-
-                if (order.Status != OrderStatus.ReadyForShipment)
-                {
-                    AddTransition(
-                        order,
-                        "Status",
-                        order.Status.ToString(),
-                        OrderStatus.ReadyForShipment.ToString(),
-                        changedBy,
-                        now);
-
-                    order.Status = OrderStatus.ReadyForShipment;
-                }
-            }
-
-            else if (paymentPercentage > 30m)
-            {
-                if (order.PaymentStatus != PaymentStatus.PartiallyPaid)
-                {
-                    AddTransition(
-                        order,
-                        "PaymentStatus",
-                        order.PaymentStatus?.ToString() ?? "None",
-                        PaymentStatus.PartiallyPaid.ToString(),
-                        changedBy,
-                        now);
-
-                    order.PaymentStatus = PaymentStatus.PartiallyPaid;
-                }
-
-                if (order.Status != OrderStatus.OrderConfirmed)
-                {
-                    AddTransition(
-                        order,
-                        "Status",
-                        order.Status.ToString(),
-                        OrderStatus.OrderConfirmed.ToString(),
-                        changedBy,
-                        now);
-
-                    order.Status = OrderStatus.OrderConfirmed;
-                }
-            }
-
-            else
-            {
-                if (order.Status != OrderStatus.OrderAcknowledged)
-                {
-                    AddTransition(
-                        order,
-                        "Status",
-                        order.Status.ToString(),
-                        OrderStatus.OrderAcknowledged.ToString(),
-                        changedBy,
-                        now);
-
-                    order.Status = OrderStatus.OrderAcknowledged;
-                }
-
-                if (order.PaymentStatus != PaymentStatus.Pending)
-                {
-                    AddTransition(
-                        order,
-                        "PaymentStatus",
-                        order.PaymentStatus?.ToString() ?? "None",
-                        PaymentStatus.Pending.ToString(),
-                        changedBy,
-                        now);
-
-                    order.PaymentStatus = PaymentStatus.Pending;
-                }
-            }
-
-            await _context.SaveChangesAsync();
-
-            return OrderMapper.MapDetails(order);
-        }
-
-        public async Task<OrderDetailsResponseDto> MarkDeliveredAsync(
-            Guid orderId,
-            string? changedBy)
-        {
-            var order = await LoadOrderWithHistoryAsync(orderId);
-
-            if (order.Status != OrderStatus.ReadyForShipment)
-            {
-                throw new OrderValidationException(
-                    "Only orders ready for shipment can be marked as delivered.");
-            }
-
-            if (order.PaymentStatus != PaymentStatus.Paid)
-            {
-                throw new OrderValidationException(
-                    "The order must be fully paid before it can be marked as delivered.");
-            }
-
-            var now = DateTime.UtcNow;
+            order.AmountPaid = order.Total;
 
             AddTransition(
-                order,
-                "Status",
-                order.Status.ToString(),
-                OrderStatus.Completed.ToString(),
+                order, 
+                "PaymentStatus", 
+                order.PaymentStatus?.ToString() ?? "None", 
+                PaymentStatus.Paid.ToString(),
                 changedBy,
                 now);
 
-            order.Status = OrderStatus.Completed;
+            order.PaymentStatus = PaymentStatus.Paid;
+
+            AddTransition(
+                order,
+                "Status", 
+                order.Status.ToString(), 
+                OrderStatus.OrderConfirmed.ToString(), 
+                changedBy, 
+                now);
+            order.Status = OrderStatus.OrderConfirmed;
+
             order.UpdatedAt = now;
 
             await _context.SaveChangesAsync();
@@ -409,10 +258,10 @@ namespace MamtasImitationJewelleryBE.Services
         {
             var order = await LoadOrderWithHistoryAsync(orderId);
 
-            if (order.Status == OrderStatus.Completed)
+            if (order.Status == OrderStatus.OrderConfirmed)
             {
                 throw new OrderValidationException(
-                    "A completed order cannot be cancelled.");
+                    "A confirmed order cannot be cancelled.");
             }
 
             if (order.Status == OrderStatus.Refunded)
@@ -542,8 +391,7 @@ namespace MamtasImitationJewelleryBE.Services
                 .Include(o => o.CustomerDetails)
                 .Where(o =>
                     o.Status != OrderStatus.Cancelled &&
-                    o.Status != OrderStatus.Refunded &&
-                    o.Status != OrderStatus.Completed
+                    o.Status != OrderStatus.Refunded
                 )
                 .OrderByDescending(o => o.CreatedAt)
                 .ToListAsync();
@@ -589,6 +437,59 @@ namespace MamtasImitationJewelleryBE.Services
                 })
                 .OrderByDescending(c => c.FirstSeen)
                 .ToList();
+        }
+
+        public async Task<OrderDetailsResponseDto> AdjustOrderItemsAsync(
+            Guid orderId, List<OrderItemQuantityDto> items, string? changedBy)
+        {
+            var order = await LoadOrderWithHistoryAsync(orderId);
+
+            if (order.Status != OrderStatus.PendingAcknowledgement)
+                throw new OrderValidationException("Quantities can only be adjusted before the order is acknowledged.");
+
+            if (items is null || items.Count == 0)
+                throw new OrderValidationException("No items to update.");
+
+            var now = DateTime.UtcNow;
+            var changed = false;
+
+            foreach (var update in items)
+            {
+                var line = order.OrderItems.FirstOrDefault(i => i.Id == update.OrderItemId);
+                if (line is null)
+                    throw new OrderValidationException("One of the items does not belong to this order.");
+
+                if (update.Quantity < 0)
+                    throw new OrderValidationException($"Quantity for {line.ProductName} cannot be negative.");
+
+                var ceiling = line.OriginalQuantity ?? line.Quantity;
+                if (update.Quantity > ceiling)
+                    throw new OrderValidationException($"Quantity for {line.ProductName} cannot exceed {ceiling}.");
+
+                if (update.Quantity == line.Quantity)
+                    continue;
+
+                line.OriginalQuantity ??= line.Quantity;
+                var previousQty = line.Quantity;
+                line.Quantity = update.Quantity;
+                line.LineTotal = Math.Round(line.UnitPrice * update.Quantity, 2);
+                changed = true;
+
+                AddTransition(order, "ItemQuantity",
+                    $"{line.ProductName}: {previousQty}",
+                    $"{line.ProductName}: {update.Quantity}",
+                    changedBy, now);
+            }
+
+            if (!changed)
+                return OrderMapper.MapDetails(order);
+
+            order.Subtotal = order.OrderItems.Sum(i => i.LineTotal);
+            order.Total = order.Subtotal;
+            order.UpdatedAt = now;
+
+            await _context.SaveChangesAsync();
+            return OrderMapper.MapDetails(order);
         }
 
         /// <summary>

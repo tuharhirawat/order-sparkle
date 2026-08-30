@@ -31,6 +31,7 @@ namespace MamtasImitationJewelleryBE.Mappers
                 Sku = i.ProductSku,
                 VariantLabel = i.VariantLabel,
                 Quantity = i.Quantity,
+                OriginalQuantity = i.OriginalQuantity,
                 UnitPrice = i.UnitPrice,
                 LineTotal = i.LineTotal,
                 ImageUrl = i.ImageUrl
@@ -126,6 +127,7 @@ namespace MamtasImitationJewelleryBE.Mappers
                 Name = i.ProductName,
                 VariantLabel = i.VariantLabel,
                 Quantity = i.Quantity,
+                OriginalQuantity = i.OriginalQuantity,
                 UnitPrice = i.UnitPrice,
                 LineTotal = i.LineTotal
             }).ToList()
@@ -150,6 +152,7 @@ namespace MamtasImitationJewelleryBE.Mappers
                 Name = i.ProductName,
                 VariantLabel = i.VariantLabel,
                 Quantity = i.Quantity,
+                OriginalQuantity = i.OriginalQuantity,
                 UnitPrice = i.UnitPrice,
                 LineTotal = i.LineTotal,
                 ImageUrl = i.ImageUrl

@@ -5,8 +5,6 @@
         PendingAcknowledgement,
         OrderAcknowledged,
         OrderConfirmed,
-        ReadyForShipment,
-        Completed,
         Cancelled,
         Refunded
     }

@@ -7,6 +7,7 @@
         public string? Sku { get; set; }
         public string? VariantLabel { get; set; }
         public int Quantity { get; set; }
+        public int? OriginalQuantity { get; set; }
         public decimal UnitPrice { get; set; }
         public decimal LineTotal { get; set; }
         public string? ImageUrl { get; set; }

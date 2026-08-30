@@ -376,6 +376,7 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.ProductName).HasColumnName("product_name");
             entity.Property(e => e.ProductSku).HasColumnName("product_sku");
             entity.Property(e => e.Quantity).HasColumnName("quantity");
+            entity.Property(e => e.OriginalQuantity).HasColumnName("original_quantity");
             entity.Property(e => e.UnitPrice)
                 .HasPrecision(12, 2)
                 .HasColumnName("unit_price");

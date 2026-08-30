@@ -23,6 +23,8 @@ public partial class OrderItem
 
     public int Quantity { get; set; }
 
+    public int? OriginalQuantity { get; set; }
+
     public decimal LineTotal { get; set; }
 
     public string? ImageUrl { get; set; }

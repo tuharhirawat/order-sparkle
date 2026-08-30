@@ -43,8 +43,6 @@ namespace MamtasImitationJewelleryBE.Controllers
             }
         }
 
-        // Endpoints used by Admin
-
         [HttpPost("Create")]
         public async Task<IActionResult> CreateOrder(
             [FromBody] CreateOrderRequestDto request)
@@ -86,6 +84,37 @@ namespace MamtasImitationJewelleryBE.Controllers
             }
         }
 
+        // Endpoints used by Admin
+
+        [HttpPost("{id:guid}/items/adjust")]
+        public async Task<IActionResult> AdjustOrderItems(Guid id, [FromBody] AdjustOrderItemsRequestDto request)
+        {
+            if (!await IsAdmin())
+                return StatusCode(StatusCodes.Status403Forbidden, new { Success = false, Message = "Admin access required." });
+
+            try
+            {
+                var order = await _orderService.AdjustOrderItemsAsync(id, request.Items, await CurrentAdminIdentity());
+                return Ok(order);
+            }
+            catch (OrderNotFoundException ex) 
+            { 
+                return NotFound(new 
+                { 
+                    Success = false, 
+                    Message = ex.Message 
+                }); 
+            }
+            catch (OrderValidationException ex) 
+            { 
+                return BadRequest(new 
+                { 
+                    Success = false, 
+                    Message = ex.Message 
+                }); 
+            }
+        }
+
         [HttpGet("Admin/Summary")]
         public async Task<IActionResult> GetOrdersSummaryForAdmin()
         {
@@ -124,7 +153,6 @@ namespace MamtasImitationJewelleryBE.Controllers
                 return BadRequest(new { Success = false, Message = ex.Message });
             }
         }
-
 
         [HttpGet("{id:guid}")]
         public async Task<IActionResult> GetOrderDetails(Guid id)
@@ -208,89 +236,32 @@ namespace MamtasImitationJewelleryBE.Controllers
             }
         }
 
-        [HttpPost("{id:guid}/payments")]
-        public async Task<IActionResult> AddPayment(
-            Guid id,
-            [FromBody] AddOrderPaymentRequestDto request)
+        [HttpPost("{id:guid}/mark-paid")]
+        public async Task<IActionResult> MarkAsPaid(Guid id)
         {
-            if (!await IsAdmin())
-            {
-                return StatusCode(
-                    StatusCodes.Status403Forbidden,
-                    new
-                    {
-                        Success = false,
-                        Message = "Admin access required."
-                    });
-            }
-
+            if (!await IsAdmin()) return StatusCode(StatusCodes.Status403Forbidden, new { Success = false, Message = "Admin access required." });
             try
             {
-                var order = await _orderService.AddOrderPaymentAsync(
-                    id, request.Amount, await CurrentAdminIdentity()
-                );
-
+                var order = await _orderService.MarkOrderAsPaidAsync(id, await CurrentAdminIdentity());
                 return Ok(order);
             }
-            catch (OrderNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    Success = false,
+            catch (OrderNotFoundException ex) 
+            { 
+                return NotFound(new 
+                { 
+                    Success = false, 
                     Message = ex.Message
-                });
+                }); 
             }
-            catch (OrderValidationException ex)
-            {
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
+            catch (OrderValidationException ex) 
+            { 
+                return BadRequest(new 
+                { 
+                    Success = false, 
+                    Message = ex.Message 
+                }); 
             }
         }
-
-
-        [HttpPost("{id:guid}/mark-delivered")]
-        public async Task<IActionResult> MarkDelivered(Guid id)
-        {
-            if (!await IsAdmin())
-            {
-                return StatusCode(
-                    StatusCodes.Status403Forbidden,
-                    new
-                    {
-                        Success = false,
-                        Message = "Admin access required."
-                    });
-            }
-
-            try
-            {
-                var order = await _orderService.MarkDeliveredAsync(
-                    id, await CurrentAdminIdentity()
-                );
-
-                return Ok(order);
-            }
-            catch (OrderNotFoundException ex)
-            {
-                return NotFound(new
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
-            }
-            catch (OrderValidationException ex)
-            {
-                return BadRequest(new
-                {
-                    Success = false,
-                    Message = ex.Message
-                });
-            }
-        }
-
 
         [HttpPost("{id:guid}/cancel")]
         public async Task<IActionResult> CancelOrder(Guid id)
@@ -332,7 +303,6 @@ namespace MamtasImitationJewelleryBE.Controllers
             }
         }
 
-
         [HttpPost("{id:guid}/refund")]
         public async Task<IActionResult> RefundOrder(Guid id)
         {
@@ -372,11 +342,6 @@ namespace MamtasImitationJewelleryBE.Controllers
                 });
             }
         }
-
-
-        // ---------------------------------------------------------
-        // ADMIN - NOTES
-        // ---------------------------------------------------------
 
         [HttpPost("{id:guid}/notes")]
         public async Task<IActionResult> AddNote(
