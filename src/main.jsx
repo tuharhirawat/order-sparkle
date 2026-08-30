@@ -9,7 +9,13 @@ import { CartProvider } from "./lib/cart";
 import { AuthProvider } from "./hooks/use-auth";
 import { Toaster } from "./components/ui/sonner";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function AppProviders() {
   return (
