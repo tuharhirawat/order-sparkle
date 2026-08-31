@@ -11,10 +11,12 @@ namespace MamtasImitationJewelleryBE.Services
     public class OrderService
     {
         private readonly ApplicationDbContext _context;
+        private readonly InventoryManagementService _inventoryManagementService;
 
-        public OrderService(ApplicationDbContext context)
+        public OrderService(ApplicationDbContext context, InventoryManagementService inventoryManagementService)
         {
             _context = context;
+            _inventoryManagementService = inventoryManagementService;
         }
 
         // Customer used
@@ -198,7 +200,6 @@ namespace MamtasImitationJewelleryBE.Services
                 now);
 
             order.PaymentStatus = PaymentStatus.Pending;
-
             order.UpdatedAt = now;
 
             await _context.SaveChangesAsync();
@@ -213,45 +214,57 @@ namespace MamtasImitationJewelleryBE.Services
             if (order.Status != OrderStatus.OrderAcknowledged)
                 throw new OrderValidationException("Only acknowledged orders can be marked as paid.");
 
-            var now = DateTime.UtcNow;
-            var pending = order.Total - order.AmountPaid;
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            _context.OrderPayments.Add(new OrderPayment
+            try
             {
-                Id = Guid.NewGuid(),
-                OrderId = order.Id,
-                Amount = pending,
-                CreatedAt = now
-            });
+                await _inventoryManagementService.DeductInventoryForOrderAsync(order);
 
-            order.AmountPaid = order.Total;
+                var now = DateTime.UtcNow;
+                var pending = order.Total - order.AmountPaid;
 
-            AddTransition(
-                order, 
-                "PaymentStatus", 
-                order.PaymentStatus?.ToString() ?? "None", 
-                PaymentStatus.Paid.ToString(),
-                changedBy,
-                now);
+                _context.OrderPayments.Add(new OrderPayment
+                {
+                    Id = Guid.NewGuid(),
+                    OrderId = order.Id,
+                    Amount = pending,
+                    CreatedAt = now
+                });
 
-            order.PaymentStatus = PaymentStatus.Paid;
+                order.AmountPaid = order.Total;
 
-            AddTransition(
-                order,
-                "Status", 
-                order.Status.ToString(), 
-                OrderStatus.OrderConfirmed.ToString(), 
-                changedBy, 
-                now);
-            order.Status = OrderStatus.OrderConfirmed;
+                AddTransition(
+                    order,
+                    "PaymentStatus",
+                    order.PaymentStatus?.ToString() ?? "None",
+                    PaymentStatus.Paid.ToString(),
+                    changedBy,
+                    now);
 
-            order.UpdatedAt = now;
+                order.PaymentStatus = PaymentStatus.Paid;
 
-            await _context.SaveChangesAsync();
+                AddTransition(
+                    order,
+                    "Status",
+                    order.Status.ToString(),
+                    OrderStatus.OrderConfirmed.ToString(),
+                    changedBy,
+                    now);
+                order.Status = OrderStatus.OrderConfirmed;
+
+                order.UpdatedAt = now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             return OrderMapper.MapDetails(order);
         }
-
         public async Task<OrderDetailsResponseDto> CancelOrderAsync(
             Guid orderId,
             string? changedBy)
@@ -319,31 +332,43 @@ namespace MamtasImitationJewelleryBE.Services
                     "An order with no payment cannot be refunded.");
             }
 
-            var now = DateTime.UtcNow;
+            await using var transaction = await _context.Database.BeginTransactionAsync();
 
-            AddTransition(
-                order,
-                "PaymentStatus",
-                order.PaymentStatus?.ToString() ?? "None",
-                PaymentStatus.Refunded.ToString(),
-                changedBy,
-                now);
+            try
+            {
+                await _inventoryManagementService.RestockForOrderAsync(order);
 
-            order.PaymentStatus = PaymentStatus.Refunded;
+                var now = DateTime.UtcNow;
 
-            AddTransition(
-                order,
-                "Status",
-                order.Status.ToString(),
-                OrderStatus.Refunded.ToString(),
-                changedBy,
-                now);
+                AddTransition(
+                    order,
+                    "PaymentStatus",
+                    order.PaymentStatus?.ToString() ?? "None",
+                    PaymentStatus.Refunded.ToString(),
+                    changedBy,
+                    now);
 
-            order.Status = OrderStatus.Refunded;
+                order.PaymentStatus = PaymentStatus.Refunded;
 
-            order.UpdatedAt = now;
+                AddTransition(
+                    order,
+                    "Status",
+                    order.Status.ToString(),
+                    OrderStatus.Refunded.ToString(),
+                    changedBy,
+                    now);
 
-            await _context.SaveChangesAsync();
+                order.Status = OrderStatus.Refunded;
+                order.UpdatedAt = now;
+
+                await _context.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
 
             return OrderMapper.MapDetails(order);
         }

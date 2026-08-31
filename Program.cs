@@ -56,6 +56,7 @@ namespace MamtasImitationJewelleryBE
             builder.Services.AddScoped<UserInitializationService>();
             builder.Services.AddScoped<ProductService>();
             builder.Services.AddScoped<OrderService>();
+            builder.Services.AddScoped<InventoryManagementService>();
 
             // Infrastructure Clients
             builder.Services.AddScoped<IAuthProviderClient, SupabaseAuthClient>();
