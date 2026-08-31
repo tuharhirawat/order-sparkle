@@ -185,9 +185,11 @@ export default function ProductPage() {
                 >
                   <Minus className="size-3.5" />
                 </Button>
+
                 <span className="w-10 text-center text-sm" aria-live="polite">
                   {quantity}
                 </span>
+
                 <Button
                   variant="ghost"
                   size="icon"
@@ -199,8 +201,19 @@ export default function ProductPage() {
                   <Plus className="size-3.5" />
                 </Button>
               </div>
-              {product.trackStock && stock > 0 && stock <= 3 && (
-                <p className="text-xs uppercase tracking-[0.16em] text-gold">Only {stock} left</p>
+
+              {product.trackStock && stock > 0 && (
+                <>
+                  {quantity >= stock ? (
+                    <p className="text-xs uppercase tracking-[0.16em] text-gold">
+                      Maximum quantity reached
+                    </p>
+                  ) : stock <= 5 ? (
+                    <p className="text-xs uppercase tracking-[0.16em] text-gold">
+                      Only {stock} left
+                    </p>
+                  ) : null}
+                </>
               )}
             </div>
 

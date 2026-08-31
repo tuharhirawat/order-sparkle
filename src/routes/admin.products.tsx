@@ -19,6 +19,8 @@ import { adminCategoryNamesQuery, adminProductsQuery } from "@/lib/admin-data";
 import api from "@/Services/api";
 import { PRODUCT_IMAGE_LIMITS } from "@/Constants/productConstants";
 import type { AdminProduct } from "@/Types/productTypes";
+import { ConfirmActionDialog } from "@/components/site/ConfirmActionDialog";
+import { ImagePreviewModal } from "@/components/site/ImagePreviewModal";
 
 interface Draft {
   name: string;
@@ -46,6 +48,12 @@ const EMPTY: Draft = {
   existingImages: [],
 };
 
+type PendingProductToggle =
+  | { kind: "confirm"; id: string; name: string; nextActive: boolean }
+  | { kind: "blocked"; productName: string; message: string };
+type PendingStockChange = { id: string; name: string; oldStock: number; newStock: number };
+type PendingFeaturedToggle = { id: string; name: string; nextFeatured: boolean };
+
 export default function AdminProducts() {
   const { data: products, isPending } = useQuery(adminProductsQuery());
   const { data: categories } = useQuery(adminCategoryNamesQuery());
@@ -54,6 +62,11 @@ export default function AdminProducts() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [editingProductId, setEditingProductId] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState<string[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [pendingStockChange, setPendingStockChange] = useState<PendingStockChange | null>(null);
+  const [pendingFeaturedToggle, setPendingFeaturedToggle] = useState<PendingFeaturedToggle | null>(null);
+  const [pendingProductToggleDialog, setPendingProductToggleDialog] = useState<PendingProductToggle | null>(null);
+  const [stockResetTick, setStockResetTick] = useState(0);
 
   const toggleCategoryFilter = (id: string) => {
     setCategoryFilter((prev) =>
@@ -127,7 +140,7 @@ export default function AdminProducts() {
       if (!Number.isFinite(price) || price <= 0) {
         throw new Error("Enter a valid price.");
       }
-      
+
       const formData = new FormData();
 
       formData.append("name", draft.name.trim());
@@ -199,19 +212,36 @@ export default function AdminProducts() {
       await api.patch(`/Product/${id}`, formData);
     },
 
-    onSuccess: () => {
-      setDraft(EMPTY);
-      setEditingProductId(null);
-      setImagePreviews([]);
-      toast.success("Product updated");
+    onSuccess: (_data, variables) => {
+      if (variables.id === editingProductId && variables.manageImages) {
+        setDraft(EMPTY);
+        setEditingProductId(null);
+        setImagePreviews([]);
+        toast.success("Product updated");
+      } else if (variables.isActive !== undefined) {
+        toast.success(variables.isActive ? "Product enabled" : "Product disabled");
+      } else if (variables.stock !== undefined) {
+        toast.success("Stock updated");
+      } else if (variables.isFeatured !== undefined) {
+        toast.success(variables.isFeatured ? "Marked as featured" : "Removed from featured");
+      }
+      else {
+        toast.success("Product updated");
+      }
       void refresh();
     },
 
-    onError: (e: any) => {
-      toast.error("Update failed", {
-        description:
-          e.response?.data?.message ?? "Something went wrong.",
-      });
+    onError: (e: any, variables) => {
+      const message = e.response?.data?.message ?? "Something went wrong.";
+
+      if (variables.isActive === true && message.toLowerCase().includes("category")) {
+        const product = products?.find((p) => p.id === variables.id);
+        setPendingProductToggleDialog({ kind: "blocked", productName: product?.name ?? "This product", message });
+        return;
+      }
+
+      toast.error("Update failed", { description: message });
+      setStockResetTick((t) => t + 1);
     },
   });
 
@@ -294,7 +324,8 @@ export default function AdminProducts() {
     }));
   };
 
-  const remove = useMutation({
+  // Remove product functionality not in use
+  {/* const remove = useMutation({
     mutationFn: async (id: string) => {
       await api.delete(`/Product/${id}`);
     },
@@ -310,7 +341,7 @@ export default function AdminProducts() {
           e.response?.data?.message ?? "Something went wrong.",
       });
     },
-  });
+  }); */}
 
   return (
     <div>
@@ -373,109 +404,131 @@ export default function AdminProducts() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredProducts.map((product) => (
-                  <tr key={product.id}>
-                    <td className="px-4 py-3">
-                      <div className="flex min-w-0 items-center gap-3">
-                        {product.productImages?.[0]?.url ? (
-                          <img
-                            src={product.productImages[0].url}
-                            alt={product.name}
-                            className="h-12 w-12 shrink-0 rounded-sm border border-border object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border text-xs text-muted-foreground">
-                            —
-                          </div>
-                        )}
+                {filteredProducts.map((product) => {
+                  const thumbnailSrc = product.productImages?.[0]?.url || product.category?.imageUrl || "";
 
-                        <div className="min-w-0">
-                          <div className="truncate">{product.name}</div>
-
-                          <span className="block text-xs text-muted-foreground">
-                            {product.productCode}
-                          </span>
-
-                          {product.productImages?.length > 0 && (
-                            <span className="block text-[10px] text-muted-foreground">
-                              {product.productImages.length}{" "}
-                              {product.productImages.length === 1 ? "photo" : "photos"}
-                            </span>
+                  return (
+                    <tr key={product.id}>
+                      <td className="px-4 py-3">
+                        <div className="flex min-w-0 items-center gap-3">
+                          {thumbnailSrc ? (
+                            <button
+                              type="button"
+                              onClick={() => setPreviewImage(thumbnailSrc)}
+                              className="shrink-0 overflow-hidden rounded-sm border border-border transition-opacity hover:opacity-80"
+                              aria-label={`Enlarge ${product.name} image`}
+                            >
+                              <img
+                                src={thumbnailSrc}
+                                alt={product.name}
+                                className="h-12 w-12 object-cover"
+                              />
+                            </button>
+                          ) : (
+                            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-sm border border-border text-xs text-muted-foreground">
+                              No image
+                            </div>
                           )}
+
+                          <div className="min-w-0">
+                            <div className="truncate">{product.name}</div>
+
+                            <span className="block text-xs text-muted-foreground">
+                              {product.productCode}
+                            </span>
+
+                            {product.productImages?.length > 0 && (
+                              <span className="block text-[10px] text-muted-foreground">
+                                {product.productImages.length}{" "}
+                                {product.productImages.length === 1 ? "photo" : "photos"}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-left text-muted-foreground">
-                      {product.category?.name ?? "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right whitespace-nowrap">
-                      {formatCurrency(Number(product.price))}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end">
-                        <Input
-                          type="number"
-                          min={0}
-                          defaultValue={product.stock}
-                          className="h-8 w-20 rounded-sm text-right"
-                          aria-label={`Stock for ${product.name}`}
-                          onBlur={(e) =>
-                            updateProduct.mutate({
-                              id: product.id,
-                              stock: Number(e.target.value) || 0,
-                            })
-                          }
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-center">
-                        <Switch
-                          checked={product.isActive}
-                          aria-label={`Toggle ${product.name}`}
-                          onCheckedChange={(checked) =>
-                            updateProduct.mutate({
-                              id: product.id,
-                              isActive: checked,
-                            })
-                          }
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex justify-center">
-                        <Switch
-                          checked={product.isFeatured}
-                          aria-label={`Toggle featured status for ${product.name}`}
-                          onCheckedChange={(checked) =>
-                            updateProduct.mutate({
-                              id: product.id,
-                              isFeatured: checked,
-                            })
-                          }
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Edit ${product.name}`}
-                        onClick={() => editProduct(product)}
-                      >
-                        <Pencil className="size-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        aria-label={`Delete ${product.name}`}
-                        onClick={() => remove.mutate(product.id)}
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="px-4 py-3 text-left text-muted-foreground">
+                        {product.category?.name ?? "—"}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        {formatCurrency(Number(product.price))}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-end">
+                          <Input
+                            key={`stock-${product.id}-${product.stock}-${stockResetTick}`}
+                            type="number"
+                            min={0}
+                            defaultValue={product.stock}
+                            className="h-8 w-20 rounded-sm text-right"
+                            aria-label={`Stock for ${product.name}`}
+                            onBlur={(e) => {
+                              const newStock = Number(e.target.value) || 0;
+                              if (newStock !== product.stock) {
+                                setPendingStockChange({
+                                  id: product.id,
+                                  name: product.name,
+                                  oldStock: product.stock,
+                                  newStock,
+                                });
+                              }
+                            }}
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={product.isActive}
+                            aria-label={`Toggle ${product.name}`}
+                            onCheckedChange={(checked) =>
+                              setPendingProductToggleDialog({
+                                kind: "confirm",
+                                id: product.id,
+                                name: product.name,
+                                nextActive: checked
+                              })
+                            }
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={product.isFeatured}
+                            aria-label={`Toggle featured status for ${product.name}`}
+                            onCheckedChange={(checked) =>
+                              setPendingFeaturedToggle({
+                                id: product.id,
+                                name: product.name,
+                                nextFeatured: checked
+                              })
+                            }
+                          />
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Edit ${product.name}`}
+                          onClick={() => editProduct(product)}
+                        >
+                          <Pencil className="size-4" />
+                        </Button>
+
+                        {/* Remove product button not under use */}
+                        {/* <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label={`Delete ${product.name}`}
+                          onClick={() => remove.mutate(product.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button> */}
+                      </td>
+                    </tr>
+                  );
+                })}
                 {!isPending && filteredProducts.length === 0 && (
                   <tr>
                     <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
@@ -560,11 +613,18 @@ export default function AdminProducts() {
                     key={image.id}
                     className="relative aspect-square overflow-hidden rounded-sm border border-border"
                   >
-                    <img
-                      src={image.url}
-                      alt={`Product photo ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(image.url)}
+                      className="block h-full w-full"
+                      aria-label={`Enlarge product photo ${index + 1}`}
+                    >
+                      <img
+                        src={image.url}
+                        alt={`Product photo ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
                     <Button
                       type="button"
                       variant="secondary"
@@ -582,11 +642,18 @@ export default function AdminProducts() {
                     key={`${src}-${index}`}
                     className="relative aspect-square overflow-hidden rounded-sm border border-border"
                   >
-                    <img
-                      src={src}
-                      alt={`New product photo ${index + 1}`}
-                      className="h-full w-full object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setPreviewImage(src)}
+                      className="block h-full w-full"
+                      aria-label={`Enlarge new product photo ${index + 1}`}
+                    >
+                      <img
+                        src={src}
+                        alt={`New product photo ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
                     <Button
                       type="button"
                       variant="secondary"
@@ -630,7 +697,76 @@ export default function AdminProducts() {
           </div>
         </div>
       </div>
+
+      {previewImage && (
+        <ImagePreviewModal src={previewImage} onClose={() => setPreviewImage(null)} />
+      )}
+
+      <ConfirmActionDialog
+        open={!!pendingStockChange}
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingStockChange(null);
+            setStockResetTick((t) => t + 1);
+          }
+        }}
+        title={`Update stock for "${pendingStockChange?.name}"?`}
+        description={`Change stock from ${pendingStockChange?.oldStock} to ${pendingStockChange?.newStock}?`}
+        confirmLabel="Yes, update stock"
+        onConfirm={() => {
+          if (pendingStockChange) {
+            updateProduct.mutate({ id: pendingStockChange.id, stock: pendingStockChange.newStock });
+          }
+          setPendingStockChange(null);
+        }}
+      />
+
+      <ConfirmActionDialog
+        open={!!pendingFeaturedToggle}
+        onOpenChange={(open) => !open && setPendingFeaturedToggle(null)}
+        title={`${pendingFeaturedToggle?.nextFeatured ? "Feature" : "Unfeature"} "${pendingFeaturedToggle?.name}"?`}
+        description={
+          pendingFeaturedToggle?.nextFeatured
+            ? `"${pendingFeaturedToggle?.name}" will be shown as a featured product.`
+            : `"${pendingFeaturedToggle?.name}" will no longer be shown as a featured product.`
+        }
+        confirmLabel={`Yes, ${pendingFeaturedToggle?.nextFeatured ? "feature" : "unfeature"}`}
+        onConfirm={() => {
+          if (pendingFeaturedToggle) {
+            updateProduct.mutate({ id: pendingFeaturedToggle.id, isFeatured: pendingFeaturedToggle.nextFeatured });
+          }
+          setPendingFeaturedToggle(null);
+        }}
+      />
+
+      <ConfirmActionDialog
+        open={!!pendingProductToggleDialog}
+        onOpenChange={(open) => !open && setPendingProductToggleDialog(null)}
+        title={
+          pendingProductToggleDialog?.kind === "blocked"
+            ? "Can't enable this product"
+            : `${pendingProductToggleDialog?.nextActive ? "Enable" : "Disable"} "${pendingProductToggleDialog?.name}"?`
+        }
+        description={
+          pendingProductToggleDialog?.kind === "blocked"
+            ? pendingProductToggleDialog.message
+            : pendingProductToggleDialog?.nextActive
+              ? `This will make "${pendingProductToggleDialog?.name}" visible to customers again.`
+              : `This will hide "${pendingProductToggleDialog?.name}" from customers.`
+        }
+        confirmLabel={
+          pendingProductToggleDialog?.kind === "blocked"
+            ? "OK"
+            : `Yes, ${pendingProductToggleDialog?.nextActive ? "enable" : "disable"}`
+        }
+        hideCancel={pendingProductToggleDialog?.kind === "blocked"}
+        onConfirm={() => {
+          if (pendingProductToggleDialog?.kind === "confirm") {
+            updateProduct.mutate({ id: pendingProductToggleDialog.id, isActive: pendingProductToggleDialog.nextActive });
+          }
+          setPendingProductToggleDialog(null);
+        }}
+      />
     </div>
   );
 }
-

@@ -6,9 +6,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatDate } from "@/lib/format";
-import { X } from "lucide-react";
-import { Dialog, DialogContent, DialogClose } from "@/components/ui/dialog";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
+import { ImagePreviewModal } from "./ImagePreviewModal";
 import {
   adminOrderDetailsQuery,
   acknowledgeOrder,
@@ -374,15 +373,18 @@ export default function AdminOrderDetails() {
             <ul className="space-y-3 text-sm">
               {order.items.map((item) => (
                 <li key={item.id} className="flex items-center gap-4">
-                  {item.imageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setPreviewImage(item.imageUrl)}
-                      className="size-14 shrink-0 overflow-hidden rounded-sm border border-border transition-opacity hover:opacity-80"
-                    >
+                  <button
+                    type="button"
+                    onClick={() => item.imageUrl && setPreviewImage(item.imageUrl)}
+                    disabled={!item.imageUrl}
+                    className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-sm border border-border text-center text-[10px] leading-tight text-muted-foreground transition-opacity enabled:hover:opacity-80 disabled:cursor-default"
+                  >
+                    {item.imageUrl ? (
                       <img src={item.imageUrl} alt={item.name} className="size-full object-cover" />
-                    </button>
-                  )}
+                    ) : (
+                      <span className="px-1">{item.name || "No image"}</span>
+                    )}
+                  </button>
 
                   <div className="min-w-0 flex-1">
                     <p>{item.name}</p>
@@ -671,16 +673,9 @@ export default function AdminOrderDetails() {
         </aside>
       </div>
 
-      <Dialog open={!!previewImage} onOpenChange={(open) => !open && setPreviewImage(null)}>
-        <DialogContent className="max-w-none w-screen h-screen border-none bg-black/90 p-0 flex items-center justify-center [&>button]:hidden">
-          {previewImage && (
-            <img src={previewImage} alt="" className="max-h-[90vh] max-w-[90vw] object-contain" />
-          )}
-          <DialogClose className="absolute right-6 top-6 rounded-full bg-background/10 p-2 text-white transition-colors hover:bg-background/20">
-            <X className="size-5" />
-          </DialogClose>
-        </DialogContent>
-      </Dialog>
+      {previewImage && (
+        <ImagePreviewModal src={previewImage} onClose={() => setPreviewImage(null)} />
+      )}
 
       <ConfirmActionDialog
         open={cancelOpen}

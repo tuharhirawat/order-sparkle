@@ -16,6 +16,7 @@ export function ConfirmActionDialog({
   description,
   confirmLabel,
   cancelLabel = "Cancel",
+  hideCancel = false,
   onConfirm,
 }: {
   open: boolean;
@@ -24,6 +25,7 @@ export function ConfirmActionDialog({
   description: React.ReactNode;
   confirmLabel: string;
   cancelLabel?: string;
+  hideCancel?: boolean;
   onConfirm: () => void;
 }) {
   return (
@@ -34,7 +36,7 @@ export function ConfirmActionDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>
+          {!hideCancel && <AlertDialogCancel>{cancelLabel}</AlertDialogCancel>}
           <AlertDialogAction onClick={onConfirm}>{confirmLabel}</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

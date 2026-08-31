@@ -39,6 +39,7 @@ export interface AdminProduct {
     id: string;
     name: string;
     urlName: string;
+    imageUrl?: string | null;
   };
   productImages: AdminProductImage[];
 }
