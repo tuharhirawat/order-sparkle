@@ -128,6 +128,27 @@ namespace MamtasImitationJewelleryBE.Controllers
             });
         }
 
+        [HttpPatch("Categories/{id:guid}")]
+        public async Task<IActionResult> UpdateCategory(Guid id, [FromForm] UpdateCategoryRequestDto request)
+        {
+            if (!await IsAdmin())
+                return StatusCode(StatusCodes.Status403Forbidden, new { Success = false, Message = "Admin access required." });
+
+            try
+            {
+                var category = await _productService.UpdateCategoryAsync(id, request);
+
+                if (category == null)
+                    return NotFound(new { Success = false, Message = "Category not found." });
+
+                return Ok(category);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { Success = false, Message = ex.Message });
+            }
+        }
+
         [HttpDelete("Categories/{id}")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {

@@ -163,9 +163,64 @@ namespace MamtasImitationJewelleryBE.Services
             category.IsActive = isActive;
             category.UpdatedAt = DateTime.UtcNow;
 
+            var now = DateTime.UtcNow;
+
+            await _context.Products
+                .Where(p => p.CategoryId == id && p.IsActive != isActive)
+                .ExecuteUpdateAsync(setters => setters
+                    .SetProperty(p => p.IsActive, isActive)
+                    .SetProperty(p => p.UpdatedAt, now));
+
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<Category?> UpdateCategoryAsync(Guid id, UpdateCategoryRequestDto request)
+        {
+            var category = await _context.Categories
+                .FirstOrDefaultAsync(x => x.Id == id);
+
+            if (category == null)
+                return null;
+
+            if (request.Description != null)
+            {
+                category.Description = string.IsNullOrWhiteSpace(request.Description)
+                    ? null
+                    : request.Description.Trim();
+            }
+
+            if (request.ManageImage)
+            {
+                if (request.Image != null)
+                {
+                    if (!request.Image.ContentType.StartsWith("image/"))
+                        throw new ArgumentException($"'{request.Image.FileName}' is not a valid image.");
+
+                    const long maxCategoryImageSize = 5 * 1024 * 1024;
+                    if (request.Image.Length > maxCategoryImageSize)
+                        throw new ArgumentException("The category image must not exceed 5 MB.");
+
+                    if (!string.IsNullOrWhiteSpace(category.ImageUrl))
+                        await _supabaseStorage.DeleteFileAsync(category.ImageUrl);
+
+                    var fileName = BuildFileName(request.Image);
+                    category.ImageUrl = await _supabaseStorage.UploadFileAsync(request.Image, $"category/{fileName}");
+                }
+                else if (request.RemoveImage)
+                {
+                    if (!string.IsNullOrWhiteSpace(category.ImageUrl))
+                        await _supabaseStorage.DeleteFileAsync(category.ImageUrl);
+
+                    category.ImageUrl = null;
+                }
+            }
+
+            category.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            return category;
         }
 
         public async Task<bool> DeleteCategoryAsync(Guid id)
@@ -302,6 +357,7 @@ namespace MamtasImitationJewelleryBE.Services
         {
             var product = await _context.Products
                 .Include(x => x.ProductImages)
+                .Include(x => x.Category)
                 .FirstOrDefaultAsync(x => x.Id == id);
 
             if (product == null)
@@ -351,6 +407,12 @@ namespace MamtasImitationJewelleryBE.Services
 
             if (request.IsActive.HasValue)
             {
+                if (request.IsActive.Value && product.Category != null && !product.Category.IsActive)
+                {
+                    throw new ArgumentException(
+                        $"This product's category (\"{product.Category.Name}\") is disabled. Enable the category first, then enable this product.");
+                }
+
                 product.IsActive = request.IsActive.Value;
             }
 
@@ -449,7 +511,6 @@ namespace MamtasImitationJewelleryBE.Services
         {
             return await _context.Categories
                 .AsNoTracking()
-                .Where(x => x.IsActive)
                 .OrderBy(x => x.Position)
                 .Select(x => new CategoryNamesDto { Id = x.Id, Name = x.Name })
                 .ToListAsync();
