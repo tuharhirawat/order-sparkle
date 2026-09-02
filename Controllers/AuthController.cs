@@ -98,8 +98,8 @@ namespace MamtasImitationJewelleryBE.Controllers
             });
         }
 
-        [HttpPost("ClaimFirstAdmin")]
-        public async Task<IActionResult> ClaimFirstAdmin()
+        [HttpPost("ClaimFirstOwner")]
+        public async Task<IActionResult> ClaimFirstOwner()
         {
             var accessToken = Request.Cookies["access_token"];
             if (string.IsNullOrEmpty(accessToken))
@@ -109,7 +109,7 @@ namespace MamtasImitationJewelleryBE.Controllers
             if (user == null)
                 return Unauthorized();
 
-            var result = await _adminAccessService.ClaimFirstAdminAsync(user.UserId);
+            var result = await _adminAccessService.ClaimFirstOwnerAsync(user.UserId);
             return Ok(new { granted = result.Granted, reason = result.Reason });
         }
     }

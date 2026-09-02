@@ -12,6 +12,8 @@
 
         public bool IsAdmin { get; set; }
 
+        public bool IsOwner { get; set; }
+
         public bool AnyAdminExists { get; set; }
     }
 }

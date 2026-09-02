@@ -15,25 +15,39 @@ namespace MamtasImitationJewelleryBE.Services
             _context = context;
         }
 
-        public async Task<(bool Granted, string? Reason)> ClaimFirstAdminAsync(Guid userId)
+        /// <summary>
+        /// The first person to reach the studio with no existing Admin/Owner
+        /// is promoted to Owner, not Admin. Everyone after that is blocked
+        /// until an Owner grants them access (handled separately later).
+        /// </summary>
+        public async Task<(bool Granted, string? Reason)> ClaimFirstOwnerAsync(Guid userId)
         {
             await using var transaction = await _context.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-            var anyAdminExists = await _context.UserRoles
-                .AnyAsync(role => role.Role == UserRoleType.Admin);
+            var privilegedRoleExists = await _context.UserRoles
+                .AnyAsync(role => role.Role == UserRoleType.Admin || role.Role == UserRoleType.Owner);
 
-            if (anyAdminExists)
+            if (privilegedRoleExists)
             {
                 await transaction.CommitAsync();
-                return (false, "An administrator already exists for this store.");
+                return (false, "An owner or administrator already exists for this store.");
             }
 
-            _context.UserRoles.Add(new UserRole
+            var existingRole = await _context.UserRoles.FirstOrDefaultAsync(r => r.UserId == userId);
+
+            if (existingRole != null)
             {
-                UserId = userId,
-                Role = UserRoleType.Admin,
-                CreatedAt = DateTime.UtcNow,
-            });
+                existingRole.Role = UserRoleType.Owner;
+            }
+            else
+            {
+                _context.UserRoles.Add(new UserRole
+                {
+                    UserId = userId,
+                    Role = UserRoleType.Owner,
+                    CreatedAt = DateTime.UtcNow,
+                });
+            }
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();

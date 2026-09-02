@@ -90,16 +90,21 @@ namespace MamtasImitationJewelleryBE.Services
                 await _context.SaveChangesAsync();
             }
 
+            var role = await _context.UserRoles
+                .Where(r => r.UserId == profile.UserId)
+                .Select(r => (UserRoleType?)r.Role)
+                .FirstOrDefaultAsync();
+
             return new MeResponseDto
             {
                 UserId = profile.UserId,
                 FullName = profile.FullName,
                 Email = profile.Email ?? "",
                 MobileNumber = profile.MobileNumber,
-                IsAdmin = await _context.UserRoles.AnyAsync(role =>
-                    role.UserId == profile.UserId && role.Role == UserRoleType.Admin),
-                AnyAdminExists = await _context.UserRoles.AnyAsync(role =>
-                    role.Role == UserRoleType.Admin),
+                IsAdmin = role == UserRoleType.Admin || role == UserRoleType.Owner,
+                IsOwner = role == UserRoleType.Owner,
+                AnyAdminExists = await _context.UserRoles
+                    .AnyAsync(r => r.Role == UserRoleType.Admin || r.Role == UserRoleType.Owner),
             };
         }
 
