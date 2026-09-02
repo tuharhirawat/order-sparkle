@@ -20,7 +20,7 @@ import dictionary from "@/Constants/dictionary";
 const navLinks = [
   { to: "/shop", label: "Shop" },
   { to: "/categories", label: "Collections" },
-  { to: "/about", label: "Our Story" },
+  // { to: "/about", label: "Our Story" },
 ];
 
 export function Header() {

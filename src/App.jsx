@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import { Link, Route, Routes } from "react-router-dom";
 
 const HomePage = lazy(() => import("./routes/index"));
-const AboutPage = lazy(() => import("./routes/about"));
+// const AboutPage = lazy(() => import("./routes/about")); {/* About page is temporarily disabled */}
 const CategoriesPage = lazy(() => import("./routes/categories"));
 const ShopPage = lazy(() => import("./routes/shop"));
 const ProductPage = lazy(() => import("./routes/product.$slug"));
@@ -48,7 +48,7 @@ export default function App() {
     <Suspense fallback={<LoadingPage />}>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage />} />
+        {/* <Route path="/about" element={<AboutPage />} /> */}  {/* About page is temporarily disabled */}
         <Route path="/categories" element={<CategoriesPage />} />
         <Route path="/shop" element={<ShopPage />} />
         <Route path="/product/:slug" element={<ProductPage />} />

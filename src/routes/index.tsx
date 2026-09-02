@@ -11,8 +11,8 @@ import AnnouncementBanner from "@/components/site/AnnouncementBanner";
 const promises = [
   {
     icon: Gem,
-    title: "Hallmarked craftsmanship",
-    body: "Every piece is BIS hallmarked and finished by hand in our atelier.",
+    title: "Thoughtfully crafted",
+    body: "Beautifully finished pieces chosen for their quality, detail and timeless appeal.",
   },
   {
     icon: MessageCircle,
@@ -48,14 +48,14 @@ export default function HomePage() {
 
           <div className="mx-auto flex w-full max-w-7xl flex-1 items-center px-4 py-12 sm:px-6 lg:px-8">
             <div className="max-w-xl animate-rise">
-              <p className="eyebrow">Est. 1984 · Visakhapatnam</p>
               <h1 className="mt-5 font-display text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
                 Jewellery made to be
                 <span className="italic text-gold"> inherited</span>
               </h1>
               <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-                Hand-finished gold and diamond pieces, one at a time. Choose what you love, send us a
-                request, and we will personally confirm every detail before anything is paid.
+                Timeless pieces, thoughtfully chosen and beautifully finished. Explore our
+                collection, send us a request, and we’ll personally confirm every detail
+                before anything is paid.
               </p>
               <div className="mt-10 flex flex-wrap gap-3">
                 <Button asChild size="lg" className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]">

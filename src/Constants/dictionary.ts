@@ -5,7 +5,8 @@ export default Object.freeze({
   siteLastName: 'Imitation Jewellery',
   globalBanner: 'This is a test banner which can be later updated as needed.',
   footerDetails: {
-    supportEmail: 'tusharhirawat1918@gmail.com',
+    supportEmail: 'triyank1998@gmail.com',
+    mobileNumber: '+91 9533721900',
   },
-  whatsappNumber: '+919876543210'
+  whatsappNumber: '+919533721900'
 });
