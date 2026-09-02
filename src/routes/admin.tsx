@@ -38,7 +38,7 @@ export default function AdminLayout() {
   }
 
   if (!user?.userId) return <AdminAuthCard />;
-  if (!user.isAdmin) return <NoAccessCard anyAdminExists={user.anyAdminExists} />;
+  if (!user.isOwner) return <NoAccessCard anyAdminExists={user.anyAdminExists} />;
 
   const signOut = async () => {
     await queryClient.cancelQueries();
@@ -254,15 +254,15 @@ function AdminAuthCard() {
 
 function NoAccessCard({ anyAdminExists }: { anyAdminExists: boolean }) {
   const queryClient = useQueryClient();
-  const { signOut: authSignOut, claimFirstAdmin } = useAuth();
+  const { signOut: authSignOut, claimFirstOwner } = useAuth();
   const [busy, setBusy] = useState(false);
 
   const claim = async () => {
     setBusy(true);
     try {
-      const result = await claimFirstAdmin();
+      const result = await claimFirstOwner();
       if (result.granted) {
-        toast.success("Administrator access granted");
+        toast.success("Owner access granted");
         await queryClient.invalidateQueries({ queryKey: ["admin-session"] });
       } else {
         toast.error(result.reason ?? "Access denied");
@@ -286,7 +286,7 @@ function NoAccessCard({ anyAdminExists }: { anyAdminExists: boolean }) {
         <p className="mt-3 text-sm text-muted-foreground">
           {anyAdminExists
             ? "This account is signed in but has no studio permissions. Ask an existing administrator to grant access."
-            : "No administrator exists yet. Claim studio ownership for this account to finish setup."}
+            : "No owner exists yet. Claim studio ownership for this account to finish setup."}
         </p>
         {!anyAdminExists && (
           <Button
@@ -295,7 +295,7 @@ function NoAccessCard({ anyAdminExists }: { anyAdminExists: boolean }) {
             onClick={() => void claim()}
           >
             {busy && <Loader2 className="mr-2 size-4 animate-spin" />}
-            Claim administrator access
+            Claim owner access
           </Button>
         )}
         <Button variant="ghost" className="mt-4 w-full rounded-sm" onClick={() => void signOut()}>

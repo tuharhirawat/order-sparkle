@@ -7,6 +7,7 @@ interface AuthUser {
   email: string;
   mobileNumber: string;
   isAdmin: boolean;
+  isOwner: boolean;
   anyAdminExists: boolean;
 }
 
@@ -15,7 +16,7 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
-  claimFirstAdmin: () => Promise<{ granted: boolean; reason?: string }>;
+  claimFirstOwner: () => Promise<{ granted: boolean; reason?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,7 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => { },
   refreshUser: async () => { },
-  claimFirstAdmin: async () => ({ granted: false }),
+  claimFirstOwner: async () => ({ granted: false }),
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setUser(null);
   };
 
-  const claimFirstAdmin = async (): Promise<{
+  const claimFirstOwner = async (): Promise<{
     granted: boolean;
     reason?: string;
   }> => {
@@ -75,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signOut, refreshUser, claimFirstAdmin }}>
+    <AuthContext.Provider value={{ user, loading, signOut, refreshUser, claimFirstOwner }}>
       {children}
     </AuthContext.Provider>
   );
