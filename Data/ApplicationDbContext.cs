@@ -190,6 +190,9 @@ public partial class ApplicationDbContext : DbContext
             entity.Property(e => e.Price)
                 .HasPrecision(12, 2)
                 .HasColumnName("price");
+            entity.Property(e => e.DiscountPercentage)
+               .HasPrecision(5, 2)
+               .HasColumnName("discount_percentage");
             entity.Property(e => e.ProductCode).HasColumnName("product_code");
             entity.Property(e => e.Stock)
                 .HasDefaultValue(0)

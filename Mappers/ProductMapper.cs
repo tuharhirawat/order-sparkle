@@ -7,6 +7,14 @@ namespace MamtasImitationJewelleryBE.Mappers
     {
         public static ProductResponseDto MapProduct(Product product)
         {
+            var hasDiscount = product.DiscountPercentage is > 0 and <= 100;
+
+            var displayPrice = hasDiscount
+                ? Math.Round(product.Price * (1 - product.DiscountPercentage!.Value / 100m), 2)
+                : product.Price;
+
+            var originalPrice = hasDiscount ? product.Price : product.CompareAtPrice;
+
             return new ProductResponseDto
             {
                 Id = product.Id,
@@ -15,6 +23,9 @@ namespace MamtasImitationJewelleryBE.Mappers
                 UrlName = product.UrlName,
                 Description = product.Description,
                 Price = product.Price,
+                DiscountPercentage = product.DiscountPercentage,
+                DisplayPrice = displayPrice,
+                OriginalPrice = originalPrice,
                 CompareAtPrice = product.CompareAtPrice,
                 Material = product.Material,
                 Details = product.Details,
@@ -53,12 +64,23 @@ namespace MamtasImitationJewelleryBE.Mappers
 
         public static ProductSummaryResponseDto MapProductSummary(Product product)
         {
+            var hasDiscount = product.DiscountPercentage is > 0 and <= 100;
+
+            var displayPrice = hasDiscount
+                ? Math.Round(product.Price * (1 - product.DiscountPercentage!.Value / 100m), 2)
+                : product.Price;
+
+            var originalPrice = hasDiscount ? product.Price : product.CompareAtPrice;
+
             return new ProductSummaryResponseDto
             {
                 Id = product.Id,
                 Name = product.Name,
                 UrlName = product.UrlName,
                 Price = product.Price,
+                DiscountPercentage = product.DiscountPercentage,
+                DisplayPrice = displayPrice,
+                OriginalPrice = originalPrice,
                 CompareAtPrice = product.CompareAtPrice,
                 IsFeatured = product.IsFeatured,
                 IsNew = product.CreatedAt >= DateTime.UtcNow.AddHours(-48),

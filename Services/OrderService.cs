@@ -89,7 +89,12 @@ namespace MamtasImitationJewelleryBE.Services
                 if (product.TrackStock && stock < item.Quantity)
                     throw new OrderValidationException($"Only {stock} left of {product.Name}.");
 
-                var unitPrice = product.Price + (variant?.PriceDelta ?? 0);
+                var hasDiscount = product.DiscountPercentage is > 0 and <= 100;
+                var basePrice = hasDiscount
+                    ? Math.Round(product.Price * (1 - product.DiscountPercentage!.Value / 100m), 2)
+                    : product.Price;
+
+                var unitPrice = basePrice + (variant?.PriceDelta ?? 0);
                 var image = product.ProductImages.OrderBy(i => i.Position).FirstOrDefault();
                 var lineTotal = Math.Round(unitPrice * item.Quantity, 2);
 
@@ -107,7 +112,6 @@ namespace MamtasImitationJewelleryBE.Services
                     ImageUrl = image?.Url
                 });
             }
-
             var customerDetails = new OrderCustomerDetail
             {
                 Id = Guid.NewGuid(),

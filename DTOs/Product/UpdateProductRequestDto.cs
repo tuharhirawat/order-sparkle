@@ -8,6 +8,8 @@ namespace MamtasImitationJewelleryBE.DTOs.Product
 
         public decimal? CompareAtPrice { get; set; }
 
+        public decimal? DiscountPercentage { get; set; }
+
         public int? Stock { get; set; }
 
         public bool? IsActive { get; set; }

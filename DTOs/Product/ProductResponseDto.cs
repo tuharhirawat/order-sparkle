@@ -8,6 +8,9 @@
         public string UrlName { get; set; } = null!;
         public string? Description { get; set; }
         public decimal Price { get; set; }
+        public decimal? DiscountPercentage { get; set; }
+        public decimal DisplayPrice { get; set; }
+        public decimal? OriginalPrice { get; set; }
         public decimal? CompareAtPrice { get; set; }
         public string? Material { get; set; }
         public string? Details { get; set; }

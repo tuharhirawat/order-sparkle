@@ -397,6 +397,16 @@ namespace MamtasImitationJewelleryBE.Services
                 product.CompareAtPrice = null;
             }
 
+            if (request.DiscountPercentage.HasValue)
+            {
+                if (request.DiscountPercentage.Value < 0 || request.DiscountPercentage.Value >= 100)
+                    throw new ArgumentException("Discount must be between 0 and 100.");
+
+                product.DiscountPercentage = request.DiscountPercentage.Value == 0
+                    ? (decimal?)null
+                    : request.DiscountPercentage.Value;
+            }
+
             if (request.Stock.HasValue)
             {
                 if (request.Stock.Value < 0)
