@@ -46,10 +46,10 @@ export function ProductCard({ product }: { product: ProductSummary }) {
             {product.name}
           </h3>
           <p className="flex items-baseline gap-2 text-sm text-foreground">
-            {formatCurrency(Number(product.price))}
-            {product.compareAtPrice && Number(product.compareAtPrice) > Number(product.price) && (
+            {formatCurrency(Number(product.displayPrice))}
+            {product.originalPrice != null && Number(product.originalPrice) > Number(product.displayPrice) && (
               <span className="text-xs text-muted-foreground line-through">
-                {formatCurrency(Number(product.compareAtPrice))}
+                {formatCurrency(Number(product.originalPrice))}
               </span>
             )}
           </p>

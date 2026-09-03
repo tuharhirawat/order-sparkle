@@ -26,6 +26,7 @@ interface Draft {
   name: string;
   price: string;
   compareAtPrice: string;
+  discountPercentage: string;
   stock: string;
   categoryId: string;
   material: string;
@@ -39,6 +40,7 @@ const EMPTY: Draft = {
   name: "",
   price: "",
   compareAtPrice: "",
+  discountPercentage: "",
   stock: "0",
   categoryId: "",
   material: "",
@@ -148,6 +150,9 @@ export default function AdminProducts() {
       if (draft.compareAtPrice.trim()) {
         formData.append("compareAtPrice", draft.compareAtPrice.trim());
       }
+      if (draft.discountPercentage.trim()) {
+        formData.append("discountPercentage", draft.discountPercentage.trim());
+      }
       formData.append(
         "stock",
         (Number(draft.stock) || 0).toString()
@@ -188,6 +193,7 @@ export default function AdminProducts() {
       id: string;
       price?: number;
       compareAtPrice?: number | null;
+      discountPercentage?: number | null;
       stock?: number;
       isActive?: boolean;
       isFeatured?: boolean;
@@ -251,6 +257,7 @@ export default function AdminProducts() {
       name: product.name,
       price: String(product.price),
       compareAtPrice: product.compareAtPrice == null ? "" : String(product.compareAtPrice),
+      discountPercentage: product.discountPercentage == null ? "" : String(product.discountPercentage),
       stock: String(product.stock),
       categoryId: product.category?.id ?? "",
       material: product.material ?? "",
@@ -278,6 +285,9 @@ export default function AdminProducts() {
     const compareAtPrice = draft.compareAtPrice.trim()
       ? Number(draft.compareAtPrice)
       : null;
+    const discountPercentage = draft.discountPercentage.trim()   // ← this line was missing
+      ? Number(draft.discountPercentage)
+      : null;
 
     if (draft.name.trim().length < 2) {
       toast.error("Enter a product name.");
@@ -295,11 +305,19 @@ export default function AdminProducts() {
       toast.error("Compare price must be greater than the product price.");
       return;
     }
+    if (
+      discountPercentage !== null &&
+      (!Number.isFinite(discountPercentage) || discountPercentage < 0 || discountPercentage > 100)
+    ) {
+      toast.error("Discount must be between 0 and 100.");
+      return;
+    }
 
     updateProduct.mutate({
       id: editingProductId,
       price,
       compareAtPrice,
+      discountPercentage,
       stock: Number(draft.stock) || 0,
       details: draft.details.trim() || null,
       isFeatured: draft.isFeatured,
@@ -384,11 +402,12 @@ export default function AdminProducts() {
           <div className="overflow-x-auto rounded-sm border border-border">
             <table className="w-full table-fixed text-sm">
               <colgroup>
-                <col className="w-[25%]" />
-                <col className="w-[15%]" />
-                <col className="w-[20%]" />
                 <col className="w-[22%]" />
-                <col className="w-[8%]" />
+                <col className="w-[13%]" />
+                <col className="w-[15%]" />
+                <col className="w-[12%]" />
+                <col className="w-[15%]" />
+                <col className="w-[7%]" />
                 <col className="w-[8%]" />
                 <col className="w-[8%]" />
               </colgroup>
@@ -397,6 +416,7 @@ export default function AdminProducts() {
                   <th className="px-4 py-3 text-left">Product</th>
                   <th className="px-4 py-3 text-left">Collection</th>
                   <th className="px-4 py-3 text-right">Price</th>
+                  <th className="px-4 py-3 text-right">Sale Price</th>
                   <th className="px-4 py-3 text-right">Stock</th>
                   <th className="px-4 py-3 text-center">Live</th>
                   <th className="px-4 py-3 text-center">Featured</th>
@@ -451,6 +471,13 @@ export default function AdminProducts() {
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         {formatCurrency(Number(product.price))}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        {product.discountPercentage ? (
+                          <span className="text-gold">{formatCurrency(Number(product.displayPrice))}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end">
@@ -531,7 +558,7 @@ export default function AdminProducts() {
                 })}
                 {!isPending && filteredProducts.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                       {categoryFilter.length > 0
                         ? "No products match the selected collections."
                         : "No products yet."}
@@ -557,8 +584,37 @@ export default function AdminProducts() {
               </div>
               <div>
                 <Label htmlFor="p-compare-price" className="text-xs uppercase tracking-[0.16em]">Compare price</Label>
-                <Input id="p-compare-price" type="number" min={0} value={draft.compareAtPrice} onChange={(e) => set("compareAtPrice", e.target.value)} className="mt-2 h-10 rounded-sm" />
+                <Input
+                  id="p-compare-price"
+                  type="number"
+                  min={0}
+                  value={draft.compareAtPrice}
+                  onChange={(e) => set("compareAtPrice", e.target.value)}
+                  disabled={Boolean(draft.discountPercentage.trim())}
+                  className="mt-2 h-10 rounded-sm"
+                />
               </div>
+            </div>
+            <div>
+              <Label htmlFor="p-discount" className="text-xs uppercase tracking-[0.16em]">Discount %</Label>
+              <Input
+                id="p-discount"
+                type="number"
+                min={0}
+                max={100}
+                value={draft.discountPercentage}
+                onChange={(e) => set("discountPercentage", e.target.value)}
+                disabled={Boolean(draft.compareAtPrice.trim())}
+                className="mt-2 h-10 rounded-sm"
+                placeholder="e.g. 25 for 25% off"
+              />
+              {draft.discountPercentage.trim() && Number(draft.price) > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Customers will see {formatCurrency(
+                    Math.round(Number(draft.price) * (1 - Number(draft.discountPercentage) / 100) * 100) / 100
+                  )}
+                </p>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>

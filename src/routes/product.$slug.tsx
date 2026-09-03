@@ -45,6 +45,15 @@ export default function ProductPage() {
   const selectedVariant: ProductVariant | null =
     variants.find((v) => v.id === variantId) ?? (variants.length > 0 ? variants[0]! : null);
   const price = variantPrice(product, selectedVariant);
+  const hasDiscount = product.discountPercentage != null && product.discountPercentage > 0;
+  const displayPrice = hasDiscount
+    ? Math.round(price * (1 - product.discountPercentage! / 100) * 100) / 100
+    : price;
+  const strikePrice = hasDiscount
+    ? price
+    : product.compareAtPrice && Number(product.compareAtPrice) > price
+      ? Number(product.compareAtPrice)
+      : null;
   const stock = availableStock(product, selectedVariant);
   const soldOut = stock <= 0;
   const image = images[activeImage] ?? images[0];
@@ -59,7 +68,7 @@ export default function ProductPage() {
         name: product.name,
         sku: `${product.productCode}${selectedVariant?.variantCode ?? ""}`,
         variantLabel: selectedVariant?.label ?? null,
-        price,
+        price: displayPrice,
         imageUrl: displayImageUrl ?? null,
         maxQuantity: stock,
       },
@@ -132,11 +141,16 @@ export default function ProductPage() {
             {product.category && <p className="eyebrow">{product.category.name}</p>}
             <h1 className="mt-3 font-display text-4xl leading-tight sm:text-5xl">{product.name}</h1>
             <div className="mt-4 flex items-baseline gap-3">
-              <p className="text-2xl text-foreground">{formatCurrency(price)}</p>
-              {product.compareAtPrice && Number(product.compareAtPrice) > price && (
+              <p className="text-2xl text-foreground">{formatCurrency(displayPrice)}</p>
+              {strikePrice !== null && (
                 <p className="text-sm text-muted-foreground line-through">
-                  {formatCurrency(Number(product.compareAtPrice))}
+                  {formatCurrency(strikePrice)}
                 </p>
+              )}
+              {hasDiscount && (
+                <span className="rounded-sm bg-gold/10 px-2 py-0.5 text-xs font-medium text-gold">
+                  {product.discountPercentage}% OFF
+                </span>
               )}
             </div>
             <p className="mt-1 text-xs uppercase tracking-[0.16em] text-muted-foreground">

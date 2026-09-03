@@ -4,6 +4,9 @@ export interface ProductSummary {
   urlName: string;
   price: number;
   compareAtPrice?: number | null;
+  discountPercentage: number | null;
+  displayPrice: number;
+  originalPrice: number | null;
   isFeatured: boolean;
   isNew: boolean;
   inStock: boolean;
@@ -30,6 +33,9 @@ export interface AdminProduct {
   description?: string | null;
   price: number;
   compareAtPrice?: number | null;
+  discountPercentage: number | null;
+  displayPrice: number;
+  originalPrice: number | null;
   material?: string | null;
   details?: string | null;
   stock: number;
@@ -84,6 +90,9 @@ export interface Product {
   urlName: string;
   price: number;
   compareAtPrice?: number | null;
+  discountPercentage: number | null;
+  displayPrice: number;
+  originalPrice: number | null;
   material?: string | null;
   details?: string | null;
   stock: number;
