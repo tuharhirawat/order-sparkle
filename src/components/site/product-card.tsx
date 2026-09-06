@@ -12,7 +12,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
       className="group block focus-visible:outline-none"
     >
       <article>
-        <div className="relative aspect-square overflow-hidden rounded-sm bg-surface">
+        <div className="relative aspect-video overflow-hidden rounded-sm bg-surface">
           {product.thumbnailUrl ? (
             <img
               src={product.thumbnailUrl}
@@ -62,7 +62,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
 export function ProductCardSkeleton() {
   return (
     <div>
-      <Skeleton className="aspect-square w-full rounded-sm" />
+      <Skeleton className="aspect-video w-full rounded-sm" />
       <Skeleton className="mt-4 h-3 w-16" />
       <Skeleton className="mt-2 h-5 w-3/4" />
       <Skeleton className="mt-2 h-4 w-20" />

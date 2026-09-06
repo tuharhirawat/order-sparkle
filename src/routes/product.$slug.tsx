@@ -109,11 +109,11 @@ export default function ProductPage() {
                   src={displayImageUrl}
                   alt={(product.category?.name ?? product.name).toLocaleLowerCase()}
                   width={1024}
-                  height={1024}
-                  className="aspect-square w-full object-cover"
+                  height={576}
+                  className="aspect-video w-full object-cover"
                 />
               ) : (
-                <div className="flex aspect-square items-center justify-center text-sm text-muted-foreground">
+                <div className="flex aspect-video items-center justify-center text-sm text-muted-foreground">
                   Image coming soon
                 </div>
               )}
