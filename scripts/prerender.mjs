@@ -9,7 +9,7 @@
 //
 // Usage (already wired into package.json): npm run build
 
-import { spawn } from "node:child_process";
+import { spawn, exec } from "node:child_process";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -44,6 +44,26 @@ async function getRoutes() {
 
   // de-duplicate just in case
   return [...new Set(routes)];
+}
+
+// Force-kills the preview server AND any child process it spawned.
+// On Windows, spawning through a shell wraps the real process, so a plain
+// .kill() only kills the wrapper and leaves vite/chrome running in the
+// background — which both blocks the port on the next run AND can prevent
+// this whole script from exiting (silently breaking any "&&" step after it).
+function killServerTree(server) {
+  return new Promise((resolve) => {
+    if (process.platform === "win32") {
+      exec(`taskkill /pid ${server.pid} /T /F`, () => resolve());
+    } else {
+      try {
+        process.kill(-server.pid, "SIGKILL");
+      } catch {
+        server.kill("SIGKILL");
+      }
+      resolve();
+    }
+  });
 }
 
 // ---------- Step 2: Start a local static server for dist/ ----------
@@ -107,6 +127,24 @@ function routeToFilePath(route) {
 
 const PRODUCTION_ORIGIN = "https://www.mamtasimitationjewellery.com";
 
+// How many pages to prerender at once. Higher = faster overall, but uses
+// more memory/CPU on the build machine. 5 is a safe starting point; raise
+// it if your catalog grows into the hundreds and builds get slow.
+const CONCURRENCY = 5;
+
+// Console/network noise that is EXPECTED during prerendering (no logged-in
+// user exists, so the "am I logged in?" check always fails) and isn't a
+// real problem — filtered out so real errors are easier to spot.
+function isExpectedNoise(text) {
+  return (
+    text.includes("Auth/Me") ||
+    text.includes("Failed to refresh user") ||
+    text.includes("401") ||
+    text.includes("Failed to load module script") ||
+    text.includes("modulepreload")
+  );
+}
+
 // ---------- Browser launcher: works both locally (Windows/Mac) and on Vercel's Linux build container ----------
 async function launchBrowser() {
   if (process.env.VERCEL) {
@@ -129,52 +167,66 @@ async function launchBrowser() {
   }
 }
 
-// ---------- Step 4: Prerender each route with Puppeteer ----------
+async function prerenderOneRoute(browser, route, attempt = 1) {
+  const page = await browser.newPage();
+
+  page.on("console", (msg) => {
+    if (msg.type() === "error" && !isExpectedNoise(msg.text())) {
+      console.warn(`  [${route}] [browser console error] ${msg.text()}`);
+    }
+  });
+  page.on("pageerror", (err) => {
+    console.warn(`  [${route}] [browser page error] ${err.message}`);
+  });
+  page.on("requestfailed", (req) => {
+    if (!isExpectedNoise(req.url())) {
+      console.warn(`  [${route}] [request failed] ${req.url()} - ${req.failure()?.errorText}`);
+    }
+  });
+
+  try {
+    const url = `${PREVIEW_URL}${route}`;
+    // A little extra headroom than the default, since several pages may be
+    // loading through the same preview server at once.
+    await page.goto(url, { waitUntil: "networkidle0", timeout: 45000 });
+
+    // Extra safety wait: give React a moment to paint after last network call.
+    await new Promise((r) => setTimeout(r, 1000));
+
+    let html = await page.content();
+
+    // Fix asset/preload URLs that got hardcoded to the local preview server
+    // during prerendering — they must point to the real production domain.
+    html = html.split(PREVIEW_URL).join(PRODUCTION_ORIGIN);
+
+    const filePath = routeToFilePath(route);
+    await mkdir(path.dirname(filePath), { recursive: true });
+    await writeFile(filePath, html, "utf-8");
+
+    console.log(`Prerendered: ${route} -> saved`);
+  } catch (err) {
+    await page.close().catch(() => {});
+    if (attempt < 2) {
+      console.warn(`  [${route}] attempt ${attempt} failed (${err.message}), retrying...`);
+      return prerenderOneRoute(browser, route, attempt + 1);
+    }
+    console.error(`!! failed to prerender ${route} after ${attempt} attempts:`, err.message);
+    return;
+  }
+  await page.close().catch(() => {});
+}
+
+// ---------- Step 4: Prerender routes with Puppeteer, several at a time ----------
 async function prerenderRoutes(routes) {
   const browser = await launchBrowser();
 
-  for (const route of routes) {
-    const page = await browser.newPage();
-
-    // Surface browser console errors and network failures in our terminal,
-    // so CORS issues / JS errors are visible instead of silently producing empty HTML.
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
-        console.warn(`  [browser console error] ${msg.text()}`);
-      }
-    });
-    page.on("pageerror", (err) => {
-      console.warn(`  [browser page error] ${err.message}`);
-    });
-    page.on("requestfailed", (req) => {
-      console.warn(`  [request failed] ${req.url()} - ${req.failure()?.errorText}`);
-    });
-
-    try {
-      const url = `${PREVIEW_URL}${route}`;
-      console.log(`Prerendering: ${route}`);
-
-      await page.goto(url, { waitUntil: "networkidle0", timeout: 30000 });
-
-      // Extra safety wait: give React a moment to paint after last network call.
-      await new Promise((r) => setTimeout(r, 1000));
-
-      let html = await page.content();
-
-      // Fix asset/preload URLs that got hardcoded to the local preview server
-      // during prerendering — they must point to the real production domain.
-      html = html.split(PREVIEW_URL).join(PRODUCTION_ORIGIN);
-
-      const filePath = routeToFilePath(route);
-      await mkdir(path.dirname(filePath), { recursive: true });
-      await writeFile(filePath, html, "utf-8");
-
-      console.log(`  -> saved ${filePath}`);
-    } catch (err) {
-      console.error(`  !! failed to prerender ${route}:`, err.message);
-    } finally {
-      await page.close();
-    }
+  // Process routes in batches of CONCURRENCY, so we're never running more
+  // than a handful of headless browser tabs at once (keeps memory usage sane)
+  // while still being much faster than doing them one at a time.
+  for (let i = 0; i < routes.length; i += CONCURRENCY) {
+    const batch = routes.slice(i, i + CONCURRENCY);
+    console.log(`Prerendering batch ${i / CONCURRENCY + 1} (${batch.length} routes)...`);
+    await Promise.all(batch.map((route) => prerenderOneRoute(browser, route)));
   }
 
   await browser.close();
@@ -192,7 +244,7 @@ async function main() {
   try {
     await prerenderRoutes(routes);
   } finally {
-    server.kill();
+    await killServerTree(server);
   }
 
   console.log("Prerendering complete.");
