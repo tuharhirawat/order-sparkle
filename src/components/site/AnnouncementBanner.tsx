@@ -29,6 +29,7 @@ const AnnouncementBanner = ({ widthClassName = "max-w-2xl" }: AnnouncementBanner
 
   const handleClose = () => {
     const store = announcement.persist === "session" ? sessionStorage : localStorage;
+
     store.setItem(DISMISS_KEY, "true");
     setHidden(true);
   };
@@ -36,90 +37,105 @@ const AnnouncementBanner = ({ widthClassName = "max-w-2xl" }: AnnouncementBanner
   if (!announcement.enabled) return null;
 
   return (
-    <div className="w-full px-4 pt-6 sm:px-6 lg:px-8">
-      <AnimatePresence>
-        {!hidden && (
-          <motion.div
-            initial={{ opacity: 0, y: -16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.35 }}
-            className={`mx-auto w-full ${widthClassName}`}
+    <AnimatePresence>
+      {!hidden && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3 }}
+          className={`mx-auto w-full ${widthClassName}`}
+        >
+          <div
+            className="
+              relative
+              flex
+              min-h-12
+              items-center
+              gap-3
+              rounded-xl
+              border
+              border-black/10
+              bg-white/75
+              px-4
+              py-2.5
+              shadow-[0_6px_25px_rgba(0,0,0,0.12)]
+              backdrop-blur-md
+              backdrop-saturate-150
+              dark:border-white/15
+              dark:bg-[#17130f]/75
+              dark:shadow-[0_6px_25px_rgba(0,0,0,0.35)]
+              sm:min-h-14
+              sm:px-4
+            "
           >
+            {/* Icon */}
             <div
               className="
-                relative
                 flex
-                w-full
+                size-8
+                shrink-0
                 items-center
-                gap-3
-                rounded-[22px]
-                border
-                border-white/20
-                bg-white/[0.14]
-                px-4
-                py-3
-                shadow-[0_8px_40px_rgba(0,0,0,0.22)]
-                backdrop-blur-xl
-                backdrop-saturate-150
-                sm:gap-4
-                sm:px-5
-                sm:py-4
+                justify-center
+                rounded-full
+                bg-gold/15
+                text-gold
+                sm:size-9
               "
             >
-              {/* Icon */}
-              <div
-                className="
-                  flex
-                  size-10
-                  shrink-0
-                  items-center
-                  justify-center
-                  rounded-full
-                  bg-[#d8b36a]/15
-                  text-[#d8b36a]
-                  sm:size-11
-                "
-              >
-                <AlertTriangle className="size-5 sm:size-[21px]" strokeWidth={1.5} />
-              </div>
-
-              {/* Content */}
-              <div className="min-w-0 flex-1 pr-7">
-                <p className="text-xs leading-relaxed text-white/85 sm:text-sm sm:leading-relaxed">
-                  {announcement.message}
-                </p>
-              </div>
-
-              {/* Close */}
-              <button
-                type="button"
-                onClick={handleClose}
-                aria-label="Close announcement"
-                className="
-                  absolute
-                  right-3
-                  top-1/2
-                  flex
-                  size-7
-                  -translate-y-1/2
-                  items-center
-                  justify-center
-                  rounded-full
-                  text-white/50
-                  transition-colors
-                  hover:bg-white/10
-                  hover:text-white
-                  sm:right-4
-                "
-              >
-                <X className="size-4" strokeWidth={1.5} />
-              </button>
+              <AlertTriangle
+                className="size-4 sm:size-[18px]"
+                strokeWidth={1.6}
+              />
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+
+            {/* Message */}
+            <p
+              className="
+                min-w-0
+                flex-1
+                pr-7
+                text-xs
+                font-medium
+                leading-relaxed
+                text-neutral-800
+                dark:text-white/90
+                sm:text-sm
+              "
+            >
+              {announcement.message}
+            </p>
+
+            {/* Close */}
+            <button
+              type="button"
+              onClick={handleClose}
+              aria-label="Close announcement"
+              className="
+                absolute
+                right-2.5
+                top-1/2
+                flex
+                size-7
+                -translate-y-1/2
+                items-center
+                justify-center
+                rounded-full
+                text-neutral-500
+                transition-colors
+                hover:bg-black/5
+                hover:text-neutral-900
+                dark:text-white/50
+                dark:hover:bg-white/10
+                dark:hover:text-white
+              "
+            >
+              <X className="size-4" strokeWidth={1.7} />
+            </button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 };
 

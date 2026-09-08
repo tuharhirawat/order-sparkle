@@ -270,9 +270,6 @@ export default function ProductPage() {
 
             <div className="mt-8 space-y-3 text-sm text-muted-foreground">
               <p className="flex items-center gap-2">
-                <Check className="size-4 text-gold" /> BIS hallmarked and certified
-              </p>
-              <p className="flex items-center gap-2">
                 <Truck className="size-4 text-gold" /> Insured delivery across India
               </p>
               <p className="flex items-center gap-2">

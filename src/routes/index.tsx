@@ -27,50 +27,53 @@ const promises = [
 ];
 
 export default function HomePage() {
-  const { data: featured, isPending } = useQuery(productsQuery({ featuredOnly: true, limit: 8 }));
+  const { data: featuredResult, isPending } = useQuery(productsQuery({ featuredOnly: true, pageSize: 8 }));
+  const featured = featuredResult?.items;
+
+  const { data: clearanceResult, isPending: clearancePending } = useQuery(
+    productsQuery({ minDiscountPercentage: 50, pageSize: 8 })
+  );
+  const clearance = clearanceResult?.items;
 
   return (
     <SiteLayout>
       <section className="relative isolate overflow-hidden">
-        <img
-          src="/images/hero-jewellery.jpg"
-          alt="A gold diamond solitaire ring resting on ivory silk"
-          width={1920}
-          height={1088}
-          fetchPriority="high"
-          className="absolute inset-0 size-full object-cover"
-        />
+        <div className="relative aspect-[4/5] w-full min-h-[260px] max-h-[640px] xs:aspect-[3/4] sm:aspect-[16/9] sm:min-h-[340px] lg:aspect-[21/9]">
+          <img
+            src="/images/MamtasHomeBGV2.png"
+            alt="Mamta's Imitation Jewellery"
+            width={1920}
+            height={1080}
+            fetchPriority="high"
+            className="absolute inset-0 h-full w-full object-cover object-top"
+          />
 
-        <div className="absolute inset-0 bg-gradient-to-r from-background via-background/85 to-background/10 dark:from-background dark:via-background/90 dark:to-background/30" />
+          <div className="absolute left-1/2 top-2 z-20 w-full -translate-x-1/2 px-3 sm:top-5 sm:px-4">
+            <AnnouncementBanner widthClassName="max-w-xl" />
+          </div>
 
-        <div className="relative flex min-h-[74vh] flex-col">
-          <AnnouncementBanner widthClassName="max-w-[70%]" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/15 to-transparent" />
 
-          <div className="mx-auto flex w-full max-w-7xl flex-1 items-center px-4 py-12 sm:px-6 lg:px-8">
-            <div className="max-w-xl animate-rise">
-              <h1 className="mt-5 font-display text-5xl leading-[1.05] text-foreground sm:text-6xl lg:text-7xl">
-                Jewellery made to be
-                <span className="italic text-gold"> inherited</span>
-              </h1>
-              <p className="mt-6 max-w-md text-base leading-relaxed text-muted-foreground">
-                Timeless pieces, thoughtfully chosen and beautifully finished. Explore our
-                collection, send us a request, and we’ll personally confirm every detail
-                before anything is paid.
-              </p>
-              <div className="mt-10 flex flex-wrap gap-3">
-                <Button asChild size="lg" className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]">
-                  <Link to="/shop">Explore the collection</Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-sm px-8 text-xs uppercase tracking-[0.2em]"
-                >
-                  <Link to="/categories">Browse collections</Link>
-                </Button>
-              </div>
-            </div>
+          <div className="absolute bottom-4 left-4 z-10 flex flex-wrap gap-2 sm:bottom-8 sm:left-8 sm:gap-3 lg:bottom-10 lg:left-12">
+            <Button
+              asChild
+              size="sm"
+              className="rounded-sm px-4 text-[0.65rem] uppercase tracking-[0.15em] sm:size-lg sm:px-7 sm:text-xs sm:tracking-[0.2em]"
+            >
+              <Link to="/shop">Explore the collection</Link>
+            </Button>
+
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="
+                rounded-sm border-foreground/30 bg-background/85 px-4
+                text-[0.65rem] uppercase tracking-[0.15em] backdrop-blur-sm sm:px-7 sm:text-xs sm:tracking-[0.2em]
+              "
+            >
+              <Link to="/categories">Browse collections</Link>
+            </Button>
           </div>
         </div>
       </section>
@@ -123,6 +126,35 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {clearance && clearance.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 pb-8 pt-8 sm:px-6 lg:px-8">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow">Limited time</p>
+              <h2 className="mt-2 font-display text-4xl">Stock clearance sale</h2>
+            </div>
+            <Link
+              to="/shop"
+              className="group inline-flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground transition-colors hover:text-foreground"
+            >
+              View all
+              <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-1" />
+            </Link>
+          </div>
+          <div className="mt-10">
+            {clearancePending ? (
+              <ProductGridSkeleton />
+            ) : (
+              <div className="grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
+                {clearance.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* OLD CATEGORY SECTION THAT CAN BE REMOVED ONCE CONFIRMED BY BHAIYA */}
       {/* <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
