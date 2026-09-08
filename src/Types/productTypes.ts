@@ -1,3 +1,5 @@
+export type SortKey = "newest" | "price-asc" | "price-desc" | "name";
+
 export interface ProductSummary {
   id: string;
   name: string;
@@ -105,4 +107,26 @@ export interface Product {
   updatedAt: string;
   productImages: ProductImage[];
   productVariants: ProductVariant[];
+}
+
+export interface ProductFilters {
+  categorySlug?: string | undefined;
+  search?: string | undefined;
+  sort?: SortKey | undefined;
+  minPrice?: number | undefined;
+  maxPrice?: number | undefined;
+  minDiscountPercentage?: number | undefined;
+  featuredOnly?: boolean | undefined;
+  inStockOnly?: boolean | undefined;
+  excludeProductId?: string | undefined;
+  page?: number | undefined;
+  pageSize?: number | undefined;
+}
+
+export interface PagedResult<T> {
+  items: T[];
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
 }

@@ -1,25 +1,16 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, keepPreviousData } from "@tanstack/react-query";
 import api from "@/Services/api";
 import { Product, ProductSummary, Category, ProductVariant } from "@/Types/productTypes";
-
-export type SortKey = "newest" | "price-asc" | "price-desc" | "name";
-
-export interface ProductFilters {
-  categorySlug?: string | undefined;
-  search?: string | undefined;
-  sort?: SortKey | undefined;
-  minPrice?: number | undefined;
-  maxPrice?: number | undefined;
-  featuredOnly?: boolean | undefined;
-  inStockOnly?: boolean | undefined;
-  limit?: number | undefined;
-}
-
-async function fetchProducts(filters: ProductFilters): Promise<ProductSummary[]> {
+import { PagedResult, ProductFilters } from "@/Types/productTypes";
+async function fetchProducts(filters: ProductFilters): Promise<PagedResult<ProductSummary>> {
   const params = new URLSearchParams();
 
   if (filters.categorySlug) {
     params.set("categoryUrlName", filters.categorySlug);
+  }
+
+  if (filters.excludeProductId) {
+    params.set("excludeProductId", filters.excludeProductId);
   }
 
   if (filters.search) {
@@ -38,6 +29,10 @@ async function fetchProducts(filters: ProductFilters): Promise<ProductSummary[]>
     params.set("maxPrice", filters.maxPrice.toString());
   }
 
+  if (typeof filters.minDiscountPercentage === "number") {
+    params.set("minDiscountPercentage", filters.minDiscountPercentage.toString());
+  }
+
   if (filters.featuredOnly) {
     params.set("featuredOnly", "true");
   }
@@ -46,11 +41,10 @@ async function fetchProducts(filters: ProductFilters): Promise<ProductSummary[]>
     params.set("inStockOnly", "true");
   }
 
-  if (filters.limit) {
-    params.set("limit", filters.limit.toString());
-  }
+  params.set("page", (filters.page ?? 1).toString());
+  params.set("pageSize", (filters.pageSize ?? 40).toString());
 
-  const response = await api.get<ProductSummary[]>("/Product", {
+  const response = await api.get<PagedResult<ProductSummary>>("/Product", {
     params,
   });
 
@@ -73,6 +67,7 @@ export const productsQuery = (filters: ProductFilters = {}) =>
     queryKey: ["products", filters],
     queryFn: () => fetchProducts(filters),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
 export const productQuery = (urlName: string) =>

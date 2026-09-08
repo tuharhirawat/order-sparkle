@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
 import { SiteLayout } from "@/components/site/layout";
 import { ProductCard, ProductGridSkeleton } from "@/components/site/product-card";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { PAGE_SIZE_LIMITS } from "@/Constants/productConstants";
 import {
   Select,
   SelectContent,
@@ -15,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { categoriesQuery, productsQuery, type SortKey } from "@/lib/catalog";
+import { categoriesQuery, productsQuery } from "@/lib/catalog";
+import { SortKey } from "@/Types/productTypes";
 
 interface ShopSearch {
   q?: string | undefined;
@@ -24,6 +26,7 @@ interface ShopSearch {
   min?: number | undefined;
   max?: number | undefined;
   inStock?: boolean | undefined;
+  page?: number | undefined;
 }
 
 const SORTS: { value: SortKey; label: string }[] = [
@@ -40,6 +43,7 @@ export default function ShopPage() {
     return value !== null && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   };
   const sort = searchParams.get("sort");
+  const pageParam = num(searchParams.get("page"));
   const search: ShopSearch = {
     ...(searchParams.get("q") ? { q: searchParams.get("q")!.slice(0, 80) } : {}),
     ...(searchParams.get("category") ? { category: searchParams.get("category")! } : {}),
@@ -47,11 +51,46 @@ export default function ShopPage() {
     ...(num(searchParams.get("min")) !== undefined ? { min: num(searchParams.get("min")) } : {}),
     ...(num(searchParams.get("max")) !== undefined ? { max: num(searchParams.get("max")) } : {}),
     ...(searchParams.get("inStock") === "true" ? { inStock: true } : {}),
+    page: pageParam && pageParam >= 1 ? pageParam : 1,
   };
   const [filtersOpen, setFiltersOpen] = useState(false);
   const { data: categories } = useQuery(categoriesQuery());
+  const [minInput, setMinInput] = useState(search.min?.toString() ?? "");
+  const [maxInput, setMaxInput] = useState(search.max?.toString() ?? "");
+  const [priceError, setPriceError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMinInput(search.min?.toString() ?? "");
+    setMaxInput(search.max?.toString() ?? "");
+  }, [search.min, search.max]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const min = minInput === "" ? undefined : Number(minInput);
+      const max = maxInput === "" ? undefined : Number(maxInput);
+
+      if (min !== undefined && max !== undefined && min > max) {
+        setPriceError("Min price can't be greater than max price.");
+        return;
+      }
+
+      setPriceError(null);
+
+      if (min !== search.min || max !== search.max) {
+        update({ min, max });
+      }
+    }, 400);
+
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [minInput, maxInput]);
+
+  const currentPage = search.page ?? 1;
+  const batchNumber = Math.ceil(currentPage / PAGE_SIZE_LIMITS.pagesPerBatch); // 1, 2, or 3
+  const indexInBatch = (currentPage - 1) % PAGE_SIZE_LIMITS.pagesPerBatch; // 0, 1, or 2
+
   const {
-    data: products,
+    data: batchResult,
     isPending,
     isError,
     refetch,
@@ -63,16 +102,32 @@ export default function ShopPage() {
       minPrice: search.min,
       maxPrice: search.max,
       inStockOnly: search.inStock,
+      page: batchNumber,
+      pageSize: PAGE_SIZE_LIMITS.batchSize,
     }),
   );
 
+  const sliceStart = indexInBatch * PAGE_SIZE_LIMITS.pageSize;
+  const products = batchResult?.items.slice(sliceStart, sliceStart + PAGE_SIZE_LIMITS.pageSize);
+  const totalCount = batchResult?.totalCount ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE_LIMITS.pageSize); // UI page count, based on 20/page
+
   const update = (patch: Partial<ShopSearch>) =>
     setSearchParams((previous) => {
-      const next = { ...Object.fromEntries(previous), ...patch } as Record<string, unknown>;
+      const shouldResetPage = !("page" in patch);
+      const next = {
+        ...Object.fromEntries(previous),
+        ...patch,
+        ...(shouldResetPage ? { page: 1 } : {}),
+      } as Record<string, unknown>;
+
       Object.keys(next).forEach((key) => {
         const value = next[key];
-        if (value === undefined || value === "" || value === false) delete next[key];
+        if (value === undefined || value === "" || value === false || (key === "page" && value === 1)) {
+          delete next[key];
+        }
       });
+
       return next as Record<string, string>;
     });
 
@@ -177,8 +232,8 @@ export default function ShopPage() {
               min={0}
               inputMode="numeric"
               className="mt-2 h-9 rounded-sm"
-              value={search.min ?? ""}
-              onChange={(e) => update({ min: e.target.value ? Number(e.target.value) : undefined })}
+              value={minInput}
+              onChange={(e) => setMinInput(e.target.value)}
             />
           </div>
           <div>
@@ -191,9 +246,12 @@ export default function ShopPage() {
               min={0}
               inputMode="numeric"
               className="mt-2 h-9 rounded-sm"
-              value={search.max ?? ""}
-              onChange={(e) => update({ max: e.target.value ? Number(e.target.value) : undefined })}
+              value={maxInput}
+              onChange={(e) => setMaxInput(e.target.value)}
             />
+            {priceError && (
+              <p className="mt-1.5 text-xs text-red-500">{priceError}</p>
+            )}
           </div>
           <div className="flex items-center gap-2 pb-2">
             <Checkbox
@@ -232,13 +290,64 @@ export default function ShopPage() {
           ) : products && products.length > 0 ? (
             <>
               <p className="mb-8 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                {products.length} {products.length === 1 ? "piece" : "pieces"}
+                {totalCount} {totalCount === 1 ? "piece" : "pieces"}
               </p>
               <div className="grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
                 {products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
               </div>
+
+              {totalPages > 1 && (
+                <div className="mt-16 flex items-center justify-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => update({ page: currentPage - 1 })}
+                  >
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce<(number | "ellipsis")[]>((acc, p, i, arr) => {
+                        if (i > 0 && p - (arr[i - 1] as number) > 1) acc.push("ellipsis");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === "ellipsis" ? (
+                          <span key={`e-${i}`} className="px-2 text-sm text-muted-foreground">
+                            …
+                          </span>
+                        ) : (
+                          <Button
+                            key={p}
+                            variant={p === currentPage ? "secondary" : "outline"}
+                            size="sm"
+                            className="size-9 rounded-sm p-0"
+                            onClick={() => update({ page: p })}
+                          >
+                            {p}
+                          </Button>
+                        ),
+                      )}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => update({ page: currentPage + 1 })}
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
             </>
           ) : (
             <div className="rounded-sm border border-dashed border-border py-24 text-center">

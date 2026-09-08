@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { Check, Minus, Plus, ShieldCheck, Truck } from "lucide-react";
+import { Minus, Plus, ShieldCheck, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { SiteLayout } from "@/components/site/layout";
 import { ProductCard } from "@/components/site/product-card";
@@ -22,10 +22,15 @@ export default function ProductPage() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const { data: product } = useQuery(productQuery(slug));
-  const { data: related } = useQuery({
-    ...productsQuery({ categorySlug: product?.category?.urlName, limit: 8 }),
+  const { data: relatedResult } = useQuery({
+    ...productsQuery({
+      categorySlug: product?.category?.urlName,
+      excludeProductId: product?.id,
+      pageSize: 8,
+    }),
     enabled: Boolean(product?.category?.urlName),
   });
+  const related = relatedResult?.items;
 
   const images = useMemo(
     () => [...(product?.productImages ?? [])].sort((a, b) => a.position - b.position),
@@ -279,17 +284,14 @@ export default function ProductPage() {
           </div>
         </div>
 
-        {related && related.filter((p) => p.id !== product.id).length > 0 && (
+        {related && related.length > 0 && (
           <section className="mt-24">
             <p className="eyebrow">You may also like</p>
             <h2 className="mt-2 font-display text-3xl">More from this collection</h2>
             <div className="mt-10 grid grid-cols-2 gap-x-5 gap-y-12 lg:grid-cols-4">
-              {related
-                .filter((p) => p.id !== product.id)
-                .slice(0, 4)
-                .map((p) => (
-                  <ProductCard key={p.id} product={p} />
-                ))}
+              {related.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
             </div>
           </section>
         )}
