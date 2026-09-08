@@ -34,9 +34,12 @@ namespace MamtasImitationJewelleryBE.Controllers
             [FromQuery] string? sort = null,
             [FromQuery] decimal? minPrice = null,
             [FromQuery] decimal? maxPrice = null,
+            [FromQuery] decimal? minDiscountPercentage = null,
             [FromQuery] bool featuredOnly = false,
             [FromQuery] bool inStockOnly = false,
-            [FromQuery] int? limit = null)
+            [FromQuery] Guid? excludeProductId = null,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 40)
         {
             var products = await _productService.GetProductsAsync(
                 categoryUrlName,
@@ -44,9 +47,12 @@ namespace MamtasImitationJewelleryBE.Controllers
                 sort,
                 minPrice,
                 maxPrice,
+                minDiscountPercentage,
                 featuredOnly,
                 inStockOnly,
-                limit);
+                excludeProductId,
+                page,
+                pageSize);
 
             return Ok(products);
         }

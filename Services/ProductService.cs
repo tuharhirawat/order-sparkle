@@ -1,9 +1,10 @@
 using MamtasImitationJewelleryBE.Data;
+using MamtasImitationJewelleryBE.DTOs;
 using MamtasImitationJewelleryBE.DTOs.Product;
 using MamtasImitationJewelleryBE.Infrastructure.Clients;
+using MamtasImitationJewelleryBE.Mappers;
 using MamtasImitationJewelleryBE.Models;
 using Microsoft.EntityFrameworkCore;
-using MamtasImitationJewelleryBE.Mappers;
 
 namespace MamtasImitationJewelleryBE.Services
 {
@@ -23,17 +24,25 @@ namespace MamtasImitationJewelleryBE.Services
         public async Task<List<CategoryDto>> GetCategoriesAsync()
             => await GetCategoriesInternalAsync(includeInactive: false);
 
-        public async Task<List<ProductSummaryResponseDto>> GetProductsAsync(
+        public async Task<PagedResultDto<ProductSummaryResponseDto>> GetProductsAsync(
             string? categoryUrlName = null,
             string? search = null,
             string? sort = null,
             decimal? minPrice = null,
             decimal? maxPrice = null,
+            decimal? minDiscountPercentage = null,
             bool featuredOnly = false,
             bool inStockOnly = false,
-            int? limit = null)
+            Guid? excludeProductId = null,
+            int page = 1,
+            int pageSize = 40)
         {
             var query = BuildProductQuery(includeInactive: false, includeVariants: false);
+
+            if (excludeProductId.HasValue)
+            {
+                query = query.Where(x => x.Id != excludeProductId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(categoryUrlName))
             {
@@ -70,6 +79,11 @@ namespace MamtasImitationJewelleryBE.Services
                 query = query.Where(x => x.Price <= maxPrice.Value);
             }
 
+            if (minDiscountPercentage.HasValue)
+            {
+                query = query.Where(x => x.DiscountPercentage != null && x.DiscountPercentage >= minDiscountPercentage.Value);
+            }
+
             if (inStockOnly)
             {
                 query = query.Where(x => !x.TrackStock || x.Stock > 0);
@@ -83,14 +97,24 @@ namespace MamtasImitationJewelleryBE.Services
                 _ => query.OrderByDescending(x => x.CreatedAt)
             };
 
-            if (limit.HasValue && limit.Value > 0)
+            page = page < 1 ? 1 : page;
+            pageSize = pageSize is < 1 or > 60 ? 12 : pageSize;
+
+            var totalCount = await query.CountAsync();
+
+            var products = await query
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync();
+
+            return new PagedResultDto<ProductSummaryResponseDto>
             {
-                query = query.Take(limit.Value);
-            }
-
-            var products = await query.ToListAsync();
-
-            return products.Select(ProductMapper.MapProductSummary).ToList();
+                Items = products.Select(ProductMapper.MapProductSummary).ToList(),
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize)
+            };
         }
 
         // Admin only methods
