@@ -7,24 +7,31 @@
 // It is built separately from your normal client app via:
 //   vite build --ssr src/entry-server.tsx --outDir dist-server
 //
-// The orchestrator script (scripts/ssr-prerender.mjs) imports the built
-// output of this file and calls render(url) for every route.
+// ─────────────────────────────────────────────────────────────────────────
+// Route-discovery exports — consumed by scripts/ssr-prerender.mjs (which now
+// also generates the sitemap from this same data — see that file's header
+// comment). These are the ONLY functions anywhere in the codebase that know
+// how to walk /Product pages or list categories. Both reuse
+// productsQuery/categoriesQuery from ./lib/catalog, so if the backend DTO
+// shape changes and catalog.ts's types are updated to match, this file just
+// recompiles correctly. If catalog.ts is NOT updated to match, TypeScript
+// fails the build right here — before Vercel, before prerendering, before
+// a broken sitemap ever ships.
+// ─────────────────────────────────────────────────────────────────────────
 
 import { renderToString } from "react-dom/server";
 import { StaticRouter } from "react-router";
 import { Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
 import { ThemeProvider } from "./lib/theme";
 import { CartProvider } from "./lib/cart";
 import { AuthProvider } from "./hooks/use-auth";
-
 import HomePage from "./routes/index";
 import CategoriesPage from "./routes/categories";
 import ShopPage from "./routes/shop";
 import ProductPage from "./routes/product.$slug";
-
 import { categoriesQuery, productsQuery, productQuery } from "./lib/catalog";
+import type { ProductSummary, Category, ProductFilters } from "./Types/productTypes";
 
 // Real <Routes>/<Route> matching — this is required, not optional, even
 // though we already know which page we want: ProductPage calls useParams()
@@ -75,14 +82,18 @@ async function prefetchForRoute(queryClient: QueryClient, pathname: string, sear
     const slug = decodeURIComponent(pathname.replace("/product/", ""));
     await queryClient.prefetchQuery(productQuery(slug));
 
-    const product = queryClient.getQueryData<{ category?: { urlName?: string } }>([
+    const product = queryClient.getQueryData<{ id?: string; category?: { urlName?: string } }>([
       "product",
       slug,
     ]);
 
     if (product?.category?.urlName) {
       await queryClient.prefetchQuery(
-        productsQuery({ categorySlug: product.category.urlName, pageSize: 8 }),
+        productsQuery({
+          categorySlug: product.category.urlName,
+          excludeProductId: product.id,
+          pageSize: 8,
+        }),
       );
     }
   }
@@ -126,4 +137,57 @@ export async function render(url: string) {
 
   const html = renderToString(app);
   return { html };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Route-discovery exports — consumed by scripts/ssr-prerender.mjs and
+// scripts/generate-sitemap.mjs. These are the ONLY functions anywhere in
+// the codebase that know how to walk /Product pages or list categories.
+// Both reuse productsQuery/categoriesQuery from ./lib/catalog, so if the
+// backend DTO shape changes and catalog.ts's types are updated to match,
+// this file just recompiles correctly. If catalog.ts is NOT updated to
+// match, TypeScript fails the build right here — before Vercel, before
+// prerendering, before a broken sitemap ever ships.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Fetches every active product across all pages, using the same typed query as the React app. */
+export async function getAllProducts(): Promise<ProductSummary[]> {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const all: ProductSummary[] = [];
+  let page = 1;
+  let totalPages = 1;
+
+  do {
+    const filters: ProductFilters = { sort: "newest", page, pageSize: 40 };
+    const result = await queryClient.fetchQuery(productsQuery(filters));
+
+    // Runtime guard: catches a backend shape change even if catalog.ts's
+    // types were (incorrectly) left unchanged to match. Fails loudly
+    // instead of silently returning partial/empty routes.
+    if (!Array.isArray(result.items) || typeof result.totalPages !== "number") {
+      throw new Error(
+        `getAllProducts: unexpected /Product response shape on page ${page}: ${JSON.stringify(result).slice(0, 200)}`,
+      );
+    }
+
+    all.push(...result.items);
+    totalPages = result.totalPages;
+    page++;
+  } while (page <= totalPages);
+
+  return all;
+}
+
+/** Fetches every active category, using the same typed query as the React app. */
+export async function getAllCategories(): Promise<Category[]> {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const categories = await queryClient.fetchQuery(categoriesQuery());
+
+  if (!Array.isArray(categories)) {
+    throw new Error(
+      `getAllCategories: unexpected /Product/Categories response shape: ${JSON.stringify(categories).slice(0, 200)}`,
+    );
+  }
+
+  return categories;
 }

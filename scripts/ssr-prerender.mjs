@@ -4,34 +4,35 @@
 //   1. vite build                                        -> dist/
 //   2. vite build --ssr src/entry-server.tsx --outDir dist-server
 //
-// It then, in plain Node.js:
-//   1. Fetches all products + categories from your live API (to know
-//      every route that needs a page)
-//   2. For each route, calls the SSR entry's render() function directly
-//      (a normal JS function call — no browser, no server, no port)
-//   3. Injects the resulting HTML into your dist/index.html template
-//   4. Saves the result as a real static file under dist/
+// In plain Node.js, this single script now does everything that needs
+// the product/category list:
+//   1. Fetches products + categories ONCE (via the compiled SSR entry)
+//   2. Renders every route to static HTML
+//   3. Writes sitemap.xml from the SAME fetched data
 //
-// This completely replaces the old Puppeteer-based approach. There is
-// no child process, no port, no browser binary — so none of the
-// process-hanging / platform-mismatch bugs we hit before are possible
-// here by construction.
+// Merged with the old generate-sitemap.mjs specifically to avoid fetching
+// products/categories twice across two separate node processes — each
+// standalone `node script.mjs` run has its own memory, so two separate
+// scripts calling the same fetch function still means two real network
+// round-trips. Folding both jobs into one process fixes that.
+//
+// This script does NOT talk to the API directly. All data-fetching and
+// shape knowledge lives in src/entry-server.tsx (TypeScript, typed against
+// catalog.ts) so there is exactly one place to keep in sync with the backend.
 
 import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import path from "node:path";
 import { existsSync } from "node:fs";
 
-const API_BASE = "https://api.mamtasimitationjewellery.com/api";
 const DIST_DIR = path.resolve(process.cwd(), "dist");
 const SSR_DIR = path.resolve(process.cwd(), "dist-server");
+const SITE_URL = "https://www.mamtasimitationjewellery.com";
 
-// ---------- Step 1: Find the built SSR entry file ----------
+// ---------- Find the built SSR entry file ----------
 async function findSsrEntry() {
   const preferred = path.join(SSR_DIR, "entry-server.js");
   if (existsSync(preferred)) return preferred;
 
-  // Fallback: just grab whichever .js file Vite produced, in case the
-  // output name ever changes.
   const files = await readdir(SSR_DIR);
   const jsFile = files.find((f) => f.endsWith(".js"));
   if (!jsFile) {
@@ -40,34 +41,25 @@ async function findSsrEntry() {
   return path.join(SSR_DIR, jsFile);
 }
 
-// ---------- Step 2: Fetch every route that needs a page ----------
-async function getRoutes() {
-  const routes = ["/", "/shop", "/categories"];
+// ---------- Fetch products + categories ONCE, derive everything from it ----------
+// No try/catch on purpose: a failure here means the sitemap/prerender would
+// be silently incomplete, which is exactly the bug we're avoiding. Let it
+// throw — main()'s top-level .catch() fails the whole build loudly instead.
+async function fetchRouteData(ssrModule) {
+  const products = await ssrModule.getAllProducts();
+  const categories = await ssrModule.getAllCategories();
 
-  try {
-    const productsRes = await fetch(`${API_BASE}/Product?sort=newest`);
-    const products = await productsRes.json();
-    for (const p of products) {
-      if (p.urlName) routes.push(`/product/${p.urlName}`);
-    }
-  } catch (err) {
-    console.error("Failed to fetch products for prerendering:", err.message);
-  }
+  const productRoutes = products.filter((p) => p.urlName).map((p) => `/product/${p.urlName}`);
+  const categoryRoutes = categories
+    .filter((c) => c.urlName)
+    .map((c) => `/shop?category=${c.urlName}`);
 
-  try {
-    const categoriesRes = await fetch(`${API_BASE}/Product/Categories`);
-    const categories = await categoriesRes.json();
-    for (const c of categories) {
-      if (c.urlName) routes.push(`/shop?category=${c.urlName}`);
-    }
-  } catch (err) {
-    console.error("Failed to fetch categories for prerendering:", err.message);
-  }
+  const allRoutes = [...new Set(["/", "/shop", "/categories", ...productRoutes, ...categoryRoutes])];
 
-  return [...new Set(routes)];
+  return { products, categories, allRoutes };
 }
 
-// ---------- Step 3: Turn a route into a file path inside dist/ ----------
+// ---------- Turn a route into a file path inside dist/ ----------
 function routeToFilePath(route) {
   const [pathname, queryString] = route.split("?");
   let segments = pathname.split("/").filter(Boolean);
@@ -85,22 +77,55 @@ function routeToFilePath(route) {
   return path.join(DIST_DIR, ...segments, "index.html");
 }
 
+// ---------- Build sitemap.xml from the already-fetched products/categories ----------
+function buildSitemapXml(products, categories) {
+  const today = new Date().toISOString().split("T")[0];
+  const urls = [
+    { path: "/", priority: "1.0" },
+    { path: "/shop", priority: "0.9" },
+    { path: "/categories", priority: "0.8" },
+    ...products
+      .filter((p) => p.urlName)
+      .map((p) => ({ path: `/product/${p.urlName}`, priority: "0.7" })),
+    ...categories
+      .filter((c) => c.urlName)
+      .map((c) => ({ path: `/shop?category=${c.urlName}`, priority: "0.6" })),
+  ];
+
+  const entries = urls
+    .map(
+      (u) => `  <url>
+    <loc>${SITE_URL}${u.path}</loc>
+    <lastmod>${today}</lastmod>
+    <priority>${u.priority}</priority>
+  </url>`,
+    )
+    .join("\n");
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${entries}
+</urlset>
+`;
+}
+
 // ---------- Main ----------
 async function main() {
   console.log("Locating built SSR entry...");
   const ssrEntryPath = await findSsrEntry();
-  const { render } = await import(`file://${ssrEntryPath}`);
+  const ssrModule = await import(`file://${ssrEntryPath}`);
+  const { render } = ssrModule;
 
   console.log("Reading client HTML template...");
   const template = await readFile(path.join(DIST_DIR, "index.html"), "utf-8");
 
-  console.log("Fetching routes from API...");
-  const routes = await getRoutes();
-  console.log(`Found ${routes.length} routes to render.`);
+  console.log("Fetching products and categories (once)...");
+  const { products, categories, allRoutes } = await fetchRouteData(ssrModule);
+  console.log(`Found ${allRoutes.length} routes to render.`);
 
   const failures = [];
 
-  for (const route of routes) {
+  for (const route of allRoutes) {
     try {
       const { html: appHtml } = await render(route);
 
@@ -141,9 +166,17 @@ async function main() {
     console.warn(`\n${failures.length} route(s) need attention:`);
     for (const r of failures) console.warn(`  - ${r}`);
   }
+
+  console.log("Building sitemap...");
+  const xml = buildSitemapXml(products, categories);
+  const sitemapPath = path.join(DIST_DIR, "sitemap.xml");
+  await writeFile(sitemapPath, xml, "utf-8");
+  console.log(
+    `Sitemap written with ${products.length + categories.length + 3} URLs -> ${sitemapPath}`,
+  );
 }
 
 main().catch((err) => {
-  console.error("SSR prerender script failed:", err);
+  console.error("Build script failed:", err);
   process.exit(1);
 });

@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node scripts/ssr-prerender.mjs && node scripts/generate-sitemap.mjs",
+    "build": "node scripts/verify-api-contract.mjs && vite build && vite build --ssr src/entry-server.tsx --outDir dist-server && node scripts/ssr-prerender.mjs",
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
