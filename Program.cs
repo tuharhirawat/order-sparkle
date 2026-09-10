@@ -3,6 +3,7 @@ using MamtasImitationJewelleryBE.Infrastructure.Clients;
 using MamtasImitationJewelleryBE.Services;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace MamtasImitationJewelleryBE
 {
@@ -82,6 +83,19 @@ namespace MamtasImitationJewelleryBE
             });
 
             var app = builder.Build();
+
+            var forwardedHeadersOptions = new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            };
+            // Render's proxy IP isn't a fixed, known address like Azure's internal
+            // proxy is, so we clear the default known-proxy allowlist and trust
+            // forwarded headers from any address. This is safe specifically because
+            // Render's network guarantees your container is only reachable through
+            // their edge proxy, never directly from the public internet.
+            forwardedHeadersOptions.KnownNetworks.Clear();
+            forwardedHeadersOptions.KnownProxies.Clear();
+            app.UseForwardedHeaders(forwardedHeadersOptions);
 
             if (app.Environment.IsDevelopment())
             {
